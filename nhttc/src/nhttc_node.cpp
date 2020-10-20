@@ -92,6 +92,7 @@ int main(int argc, char** argv)
   ros::Rate r(50);
   while(ros::ok)
   {
+    ros::spinOnce();// missing this out cost me 2 hours of time.
     local_planner.plan();
     r.sleep();
   }
