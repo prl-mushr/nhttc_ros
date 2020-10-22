@@ -11,8 +11,8 @@
 class nhttc
 {
 public:
-  ros::Subscriber sub_pose;
-  ros::Subscriber sub_other_pose[4];
+  ros::Subscriber sub_pose,sub_twist;
+  ros::Subscriber sub_other_pose[4],sub_other_odom[4];
   ros::Subscriber sub_goal;
   ros::Publisher pub_cmd;
 
@@ -31,7 +31,12 @@ public:
     cur_state[0] = msg->pose.position.x;
     cur_state[1] = msg->pose.position.y;
     cur_state[2] = rpy[2]; 
-    ROS_INFO("self: %f",cur_state[0]);
+  }
+  void OdomCallback(const nav_msgs::Odometry::ConstPtr& msg)
+  {
+    cur_state[3] = msg->twist.twist.linear.x;
+    cur_state[4] = msg->twist.twist.linear.y;
+    cur_state[5] = msg->twist.twist.angular.z;
   }
 
   void OtherPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg, int i)
@@ -41,7 +46,13 @@ public:
     other_state[i][0] = msg->pose.position.x;
     other_state[i][1] = msg->pose.position.y;
     other_state[i][2] = rpy[2]; 
-    ROS_INFO("Other %d: %f",i, other_state[i][0]);
+  }
+
+  void OtherOdomCallback(const nav_msgs::Odometry::ConstPtr& msg, int i)
+  {
+    other_state[i][3] = msg->twist.twist.linear.x;
+    other_state[i][4] = msg->twist.twist.linear.y;
+    other_state[i][5] = msg->twist.twist.angular.z;
   }
 
   void GoalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -66,14 +77,20 @@ public:
   {
     nh.getParam("car_name",self_name);
     sub_pose = nh.subscribe("/" + self_name +"/car_pose",10,&nhttc::PoseCallback,this);
+    sub_twist = nh.subscribe("/"+ self_name +"/vesc/odom",10,&nhttc::OdomCallback,this);
     //redneck solution for multi-agent setting
     for(int i=0;i<4;i++)
     {
       s.str("");
       s<<"/car";
-      s<<i;
+      s<<i+1;
       s<<"/car_pose";
       sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc::OtherPoseCallback,this,_1,i));
+      s.str("");
+      s<<"/car";
+      s<<i+1;
+      s<<"/vesc/odom";
+      sub_other_odom[i] = nh.subscribe<nav_msgs::Odometry>((s.str()).c_str(),10,boost::bind(&nhttc::OtherOdomCallback,this,_1,i));
     }
     sub_goal = nh.subscribe("/move_base_simple/goal",10,&nhttc::GoalCallback,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
@@ -96,11 +113,26 @@ public:
     /*
     ...
     code for planning to be inserted here
-    Note: current pose is stored in cur_pose (cur_pose[0] = x, cur_pose[1] = y, cur_pose[2] = heading angle in radians)
-    goal pose is given by goal_pose (0->x, 1->y, 2-> theta)
+    
+    state:
+    state[0] = x;
+    state[1] = y;
+    state[2] = yaw/heading angle; (theta)
+    state[3] = velocity in x direction
+    state[4] = velocity in y direction
+    state[5] = rate of rotation about z axis.
     ...
     */
+
+    /* Preferred interface: 
+    nhttc_planner.set_obstacles(other_state); // void nhttc_class::set_obstacles(float agent_states[4][6])
+    nhttc_planner.set_ego(cur_state); // void nhttc_class:set_ego(float self_state[6])
+    nhttc_planner.run();
+
+    */
+
     //send speed and steering commands. Speed is in m/s, steering is in radians
+
     float speed = 0.1; //speed in m/s
     float steering_angle = 0.1; //steering angle in radians. +ve is left. -ve is right 
     send_commands(speed,steering_angle); //just sending out anything for now;
