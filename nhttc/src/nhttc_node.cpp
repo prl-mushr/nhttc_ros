@@ -6,6 +6,7 @@
 #include "tf2/LinearMath/Quaternion.h" //keeping these because they may be useful in the future?
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include <string>
+#include <sstream>
 
 class nhttc
 {
@@ -16,29 +17,31 @@ public:
   ros::Publisher pub_cmd;
 
   std::string self_name;
+  std::string other_name;
+  char index;
   std::ostringstream s;
 
-  float cur_pose[3];
-  float other_pose[3];
+  float cur_state[6];
+  float other_state[4][6];
   float goal_pose[3];
   void PoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
   {
     float rpy[3];
     rpy_from_quat(rpy,msg);
-    cur_pose[0] = msg->pose.position.x;
-    cur_pose[1] = msg->pose.position.y;
-    cur_pose[2] = rpy[2]; 
-    ROS_INFO("self: %f",cur_pose[0]);
+    cur_state[0] = msg->pose.position.x;
+    cur_state[1] = msg->pose.position.y;
+    cur_state[2] = rpy[2]; 
+    ROS_INFO("self: %f",cur_state[0]);
   }
 
-  void OtherPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+  void OtherPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg, int i)
   {
     float rpy[3];
     rpy_from_quat(rpy,msg);
-    other_pose[0] = msg->pose.position.x;
-    other_pose[1] = msg->pose.position.y;
-    other_pose[2] = rpy[2]; 
-    ROS_INFO("Other: %f",other_pose[0]);
+    other_state[i][0] = msg->pose.position.x;
+    other_state[i][1] = msg->pose.position.y;
+    other_state[i][2] = rpy[2]; 
+    ROS_INFO("Other %d: %f",i, other_state[i][0]);
   }
 
   void GoalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -64,11 +67,14 @@ public:
     nh.getParam("car_name",self_name);
     sub_pose = nh.subscribe("/" + self_name +"/car_pose",10,&nhttc::PoseCallback,this);
     //redneck solution for multi-agent setting
-    sub_other_pose[0] = nh.subscribe("/car1/car_pose",10,&nhttc::OtherPoseCallback,this);
-    sub_other_pose[1] = nh.subscribe("/car2/car_pose",10,&nhttc::OtherPoseCallback,this);
-    sub_other_pose[2] = nh.subscribe("/car3/car_pose",10,&nhttc::OtherPoseCallback,this);
-    sub_other_pose[3] = nh.subscribe("/car4/car_pose",10,&nhttc::OtherPoseCallback,this);
-
+    for(int i=0;i<4;i++)
+    {
+      s.str("");
+      s<<"/car";
+      s<<i;
+      s<<"/car_pose";
+      sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc::OtherPoseCallback,this,_1,i));
+    }
     sub_goal = nh.subscribe("/move_base_simple/goal",10,&nhttc::GoalCallback,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
   }
