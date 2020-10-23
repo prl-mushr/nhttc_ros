@@ -8,7 +8,7 @@
 #include <string>
 #include <sstream>
 
-class nhttc
+class nhttc_ros
 {
 public:
   ros::Subscriber sub_pose,sub_twist;
@@ -82,11 +82,11 @@ public:
     output_msg.drive.speed = speed;
     pub_cmd.publish(output_msg);
   }
-  nhttc(ros::NodeHandle &nh)
+  nhttc_ros(ros::NodeHandle &nh)
   {
     nh.getParam("car_name",self_name);
-    sub_pose = nh.subscribe("/" + self_name +"/car_pose",10,&nhttc::PoseCallback,this);
-    sub_twist = nh.subscribe("/"+ self_name +"/vesc/odom",10,&nhttc::OdomCallback,this);
+    sub_pose = nh.subscribe("/" + self_name +"/car_pose",10,&nhttc_ros::PoseCallback,this);
+    sub_twist = nh.subscribe("/"+ self_name +"/vesc/odom",10,&nhttc_ros::OdomCallback,this);
     // solution for multi-agent setting
     // insert hackerman_meme.jpg here
     for(int i=0;i<4;i++)
@@ -95,14 +95,14 @@ public:
       s<<"/car";
       s<<i+1;
       s<<"/car_pose";
-      sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc::OtherPoseCallback,this,_1,i));
+      sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherPoseCallback,this,_1,i));
       s.str("");
       s<<"/car";
       s<<i+1;
       s<<"/vesc/odom";
-      sub_other_odom[i] = nh.subscribe<nav_msgs::Odometry>((s.str()).c_str(),10,boost::bind(&nhttc::OtherOdomCallback,this,_1,i));
+      sub_other_odom[i] = nh.subscribe<nav_msgs::Odometry>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherOdomCallback,this,_1,i));
     }
-    sub_goal = nh.subscribe("/move_base_simple/goal",10,&nhttc::GoalCallback,this);
+    sub_goal = nh.subscribe("/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
   }
 
@@ -156,7 +156,7 @@ int main(int argc, char** argv)
 {
   ros::init(argc,argv,"location_monitor");
   ros::NodeHandle nh("~");
-  nhttc local_planner(nh);
+  nhttc_ros local_planner(nh);
   ros::Rate r(50);
   while(ros::ok)
   {

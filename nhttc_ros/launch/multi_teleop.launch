@@ -27,7 +27,7 @@
             <!-- Check CMakeLists.txt of mushr_description for appropriate values -->
             <arg name="racecar_color" value="" />
         </include>
-        <node pkg="nhttc" type="nhttc_node" name="controller" launch-prefix="xterm -e">
+        <node pkg="nhttc_ros" type="nhttc_node" name="controller" launch-prefix="xterm -e">
             <param name="car_name" value="car1"/>
         </node>
     </group>
@@ -39,7 +39,7 @@
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
         </include>
-        <node pkg="nhttc" type="nhttc_node" name="controller">
+        <node pkg="nhttc_ros" type="nhttc_node" name="controller">
             <param name="car_name" value="car2"/>
         </node>
     </group>
@@ -50,7 +50,7 @@
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
         </include>
-        <node pkg="nhttc" type="nhttc_node" name="controller3">
+        <node pkg="nhttc_ros" type="nhttc_node" name="controller3">
             <param name="car_name" value="car3"/>
         </node>
     </group>
@@ -61,7 +61,7 @@
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
         </include>
-        <node pkg="nhttc" type="nhttc_node" name="controller4">
+        <node pkg="nhttc_ros" type="nhttc_node" name="controller4">
             <param name="car_name" value="car4"/>
         </node>
     </group>
