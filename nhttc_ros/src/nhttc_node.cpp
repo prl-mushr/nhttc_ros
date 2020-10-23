@@ -136,9 +136,29 @@ public:
     */
 
     /* Preferred interface: 
-    nhttc_planner.set_obstacles(other_state); // void nhttc_class::set_obstacles(float agent_states[4][6])
-    nhttc_planner.set_ego(cur_state); // void nhttc_class:set_ego(float self_state[6])
-    nhttc_planner.run();
+    nhttc_agent.set_params(param); // params include time allowed for planning, time-step, etc. More on this later as I build it out.
+
+    nhttc_agent.set_obstacles(list_of_obstacle_states); // void nhttc_class::set_obstacles(float agent_states[4][6])
+      This list could be built with a global list enhanced with additional obstacles as necessary. Most of our programming will likely go into
+      generating and modifying the obstacles going into the planner.
+      Individual Obstacle requirements: 
+        1. Type (Velocity, MuSHRCar, PixelBlock, etc.) 
+        2. type-specific State 
+        3. type-specific controls
+
+    nhttc_agent.set_goals(goals); 
+    The goals are either for the agent AND all the obstacles, or just for the agents. I think its just for the current agent but I'll have
+    to double check. This is where the carrot goal will come in, i.e. the input from the global planner.
+
+
+    nhttc_agent.set_ego(cur_state); // void nhttc_class:set_ego(float self_state[6])
+      Agent State Requirements:
+        1. Type (can just be initialized on creation so you don't constantly pass it in)
+        2. type-specific State (X, Y, Heading Angle) (I have to double check if its with respect to the global or car frame)
+        3. type-specific controls (Speed, Steering angle)
+
+    nhttc_agent.get_controls(return_parameter);
+      This will direcly return the new control actions very easily
 
     */
 
