@@ -131,6 +131,7 @@ public:
     state[3] = velocity in x direction
     state[4] = velocity in y direction
     state[5] = rate of rotation about z axis.
+    state[6] = body frame speed (forward is +ve, backward is -ve)
     ...
     */
 
