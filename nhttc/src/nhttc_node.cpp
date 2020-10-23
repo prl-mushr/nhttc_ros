@@ -21,9 +21,15 @@ public:
   char index;
   std::ostringstream s;
 
-  float cur_state[6];
-  float other_state[4][6];
+  float cur_state[7];
+  float other_state[4][7];
   float goal_pose[3];
+
+  float get_velocity_bf(float vx,float vy,float theta) //get body frame velocity.
+  {
+    return vx*cosf(theta) + vy*sinf(theta); //ROS uses the ENU reference frame, so this theta is wrt to the x axis. 
+  }
+
   void PoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
   {
     float rpy[3];
@@ -37,6 +43,7 @@ public:
     cur_state[3] = msg->twist.twist.linear.x;
     cur_state[4] = msg->twist.twist.linear.y;
     cur_state[5] = msg->twist.twist.angular.z;
+    cur_state[6] = get_velocity_bf(cur_state[3],cur_state[4],cur_state[2]);
   }
 
   void OtherPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg, int i)
@@ -53,6 +60,8 @@ public:
     other_state[i][3] = msg->twist.twist.linear.x;
     other_state[i][4] = msg->twist.twist.linear.y;
     other_state[i][5] = msg->twist.twist.angular.z;
+    other_state[i][6] = get_velocity_bf(other_state[i][3],other_state[i][4],other_state[i][2]);
+
   }
 
   void GoalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -61,7 +70,7 @@ public:
     rpy_from_quat(rpy,msg);
     goal_pose[0] = msg->pose.position.x;
     goal_pose[1] = msg->pose.position.y;
-    goal_pose[2] = rpy[2]; // goal yaw. if mike is short for micheal, is yaw short for yee-haw? I would very much like it to be so. 
+    goal_pose[2] = rpy[2]; // goal yaw. if mike is short for micheal, is yaw short for yee-haw? I would very much like it to be so. TODO: remove this comment for being "unacademic" 
   }
 
   void send_commands(float speed, float steer) // speed is in m/s. steering is in radians
@@ -78,9 +87,10 @@ public:
     nh.getParam("car_name",self_name);
     sub_pose = nh.subscribe("/" + self_name +"/car_pose",10,&nhttc::PoseCallback,this);
     sub_twist = nh.subscribe("/"+ self_name +"/vesc/odom",10,&nhttc::OdomCallback,this);
-    //redneck solution for multi-agent setting
+    // solution for multi-agent setting
+    // insert hackerman_meme.jpg here
     for(int i=0;i<4;i++)
-    {
+    { //you'd think that with ROS being such a widely used backend that it would be simple to convert an integer to a string but nooooooo I have to make it a stringstream, get the .str() of it, then get the .c_str() of that to make it work
       s.str("");
       s<<"/car";
       s<<i+1;
