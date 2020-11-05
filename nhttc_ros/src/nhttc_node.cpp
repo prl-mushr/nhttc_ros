@@ -7,6 +7,7 @@
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include <string>
 #include <sstream>
+#include "nhttc_interface.h"
 
 class nhttc_ros
 {
@@ -24,6 +25,13 @@ public:
   float cur_state[7];
   float other_state[4][7];
   float goal_pose[3];
+  int own_index;
+
+  SGDOptParams global_params;
+  std::vector<Agent> agents; //all agents
+
+  // Agent agent; // ego agent
+  std::vector<TTCObstacle*> obstacles = BuildObstacleList(agents);
 
   float get_velocity_bf(float vx,float vy,float theta) //get body frame velocity.
   {
@@ -84,9 +92,15 @@ public:
   }
   nhttc_ros(ros::NodeHandle &nh)
   {
+
     nh.getParam("car_name",self_name);
     sub_pose = nh.subscribe("/" + self_name +"/car_pose",10,&nhttc_ros::PoseCallback,this);
     sub_twist = nh.subscribe("/"+ self_name +"/vesc/odom",10,&nhttc_ros::OdomCallback,this);
+    Eigen::Vector2f goal(0.0,0.0);
+    Eigen::VectorXf pos = Eigen::VectorXf::Zero(3);
+
+    ConstructGlobalParams(&global_params);
+
     // solution for multi-agent setting
     // insert hackerman_meme.jpg here
     for(int i=0;i<4;i++)
@@ -94,6 +108,10 @@ public:
       s.str("");
       s<<"/car";
       s<<i+1;
+      if(s.str().c_str()=="/"+self_name)
+      {
+        own_index = i;
+      }
       s<<"/car_pose";
       sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherPoseCallback,this,_1,i));
       s.str("");
@@ -101,9 +119,16 @@ public:
       s<<i+1;
       s<<"/vesc/odom";
       sub_other_odom[i] = nh.subscribe<nav_msgs::Odometry>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherOdomCallback,this,_1,i));
+
+      ROS_INFO("nhttc_constructor");
+      agents.emplace_back(GetAgentParts(6, pos, true, goal), global_params);
+      // Agent agent((GetAgentParts(6, pos, true, goal), global_params));
+      // agents.push_back(agent);
     }
-    sub_goal = nh.subscribe("/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
+
+    sub_goal = nh.subscribe("/"+self_name+"/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
+
   }
 
   void rpy_from_quat(float rpy[3],const geometry_msgs::PoseStamped::ConstPtr& msg) //not the best way to do it but I was getting errors when I tried to pass the pose.orientation cuz I don't understand the data type
@@ -161,11 +186,50 @@ public:
       This will direcly return the new control actions very easily
 
     */
+    // TODO: figure out how to init an agent.
+    // set poses of all agents (including ego agent)
+    Eigen::VectorXf x_o = Eigen::VectorXf::Zero(3);
+    for(int i = 0;i< 4;i++)
+    {
+      x_o[0] = other_state[i][0];
+      x_o[1] = other_state[i][1];
+      x_o[2] = other_state[i][2];
+      agents[i].SetEgo(x_o);
+    }
+    // create obstacle list.
+    obstacles = BuildObstacleList(agents);
 
-    //send speed and steering commands. Speed is in m/s, steering is in radians
+    Eigen::Vector2f goal;
 
-    float speed = 0.1; //speed in m/s
-    float steering_angle = 0.1; //steering angle in radians. +ve is left. -ve is right 
+    if(own_index==0)
+    {
+      goal[0] = 0;
+      goal[1] = 0;
+    }
+    if(own_index==1)
+    {
+      goal[0] = 10;
+      goal[1] = 0;
+    }
+    if(own_index==2)
+    {
+      goal[0] = 0;
+      goal[1] = 10;
+    }
+    if(own_index==3)
+    {
+      goal[0] = 10;
+      goal[1] = 10;
+    }
+
+    agents[own_index].SetPlanTime(200); //200 ms planning window
+    agents[own_index].SetObstacles(obstacles, size_t(own_index));
+    agents[own_index].UpdateGoal(goal);
+    Eigen::VectorXf controls = agents[own_index].UpdateControls();
+
+    ROS_INFO("speed: %f, steering: %f",controls[0],controls[1]);
+    float speed = controls[0]; //speed in m/s
+    float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right 
     send_commands(speed,steering_angle); //just sending out anything for now;
     return;
   }
