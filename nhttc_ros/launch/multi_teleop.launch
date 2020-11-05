@@ -1,5 +1,5 @@
 <launch>
-
+    <!-- <node type="rviz" name="rviz" pkg="rviz" args="-d $(find package_name)/rviz/multi_teleop.rviz" /> -->
     <arg name="car1_name" default="car1" />
     <arg name="car2_name" default="car2" />
     <arg name="car3_name" default="car3" />
@@ -26,8 +26,11 @@
             <!-- An empty string will result in the default URDF -->
             <!-- Check CMakeLists.txt of mushr_description for appropriate values -->
             <arg name="racecar_color" value="" />
+<!--             <arg name="x_offset" value="10.0"/>
+            <arg name="y_offset" value="10.0"/>
+            <arg name="theta_offset" value="-3.14"/> -->
         </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="xterm -e">
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="xterm -e" output="screen">
             <param name="car_name" value="car1"/>
         </node>
     </group>
@@ -38,6 +41,9 @@
             <arg name="car_name" value="$(arg car2_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
+<!--             <arg name="x_offset" value="0.0"/>
+            <arg name="y_offset" value="10.0"/>
+            <arg name="theta_offset" value="-1.57"/> -->
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
             <param name="car_name" value="car2"/>
@@ -49,6 +55,9 @@
             <arg name="car_name" value="$(arg car3_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
+<!--             <arg name="x_offset" value="10.0"/>
+            <arg name="y_offset" value="0.0"/>
+            <arg name="theta_offset" value="1.57"/> -->
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller3">
             <param name="car_name" value="car3"/>
@@ -60,12 +69,15 @@
             <arg name="car_name" value="$(arg car4_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
+<!--             <arg name="x_offset" default="0.0"/>
+            <arg name="y_offset" default="0.0"/>
+            <arg name="theta_offset" default="0.78"/> -->
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller4">
             <param name="car_name" value="car4"/>
         </node>
     </group>
-
+    <node pkg="nhttc_ros" type="pose_init.py" name="initializer"/>
     <!-- Launch third car, fourth car, etc by following above template -->
 
 </launch>
