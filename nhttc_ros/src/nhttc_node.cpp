@@ -26,7 +26,7 @@ public:
   float other_state[4][7];
   float goal_pose[3];
   int own_index;
-
+  float max_velocity;
   SGDOptParams global_params;
   std::vector<Agent> agents; //all agents
 
@@ -98,7 +98,7 @@ public:
     sub_twist = nh.subscribe("/"+ self_name +"/vesc/odom",10,&nhttc_ros::OdomCallback,this);
     Eigen::Vector2f goal(0.0,0.0);
     Eigen::VectorXf pos = Eigen::VectorXf::Zero(3);
-
+    max_velocity = 0.3;
     ConstructGlobalParams(&global_params);
 
     // solution for multi-agent setting
@@ -125,7 +125,12 @@ public:
       // Agent agent((GetAgentParts(6, pos, true, goal), global_params));
       // agents.push_back(agent);
     }
-
+    for(int i=0;i<4;i++)
+    {
+      agents[i].prob->params.radius = 0.2;
+      agents[i].prob->params.safety_radius = 0.05;
+      agents[i].prob->params.max_ttc = 20;//std::min(6/max_velocity,20);
+    }
     sub_goal = nh.subscribe("/"+self_name+"/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
 
@@ -222,12 +227,12 @@ public:
       goal[1] = 10;
     }
 
-    agents[own_index].SetPlanTime(200); //200 ms planning window
+    agents[own_index].SetPlanTime(10); //200 ms planning window
     agents[own_index].SetObstacles(obstacles, size_t(own_index));
     agents[own_index].UpdateGoal(goal);
     Eigen::VectorXf controls = agents[own_index].UpdateControls();
 
-    ROS_INFO("speed: %f, steering: %f",controls[0],controls[1]);
+    // ROS_INFO("%f",agents[own_index].prob->params.max_ttc);
     float speed = controls[0]; //speed in m/s
     float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right 
     send_commands(speed,steering_angle); //just sending out anything for now;
@@ -242,6 +247,10 @@ int main(int argc, char** argv)
   ros::NodeHandle nh("~");
   nhttc_ros local_planner(nh);
   ros::Rate r(50);
+  for(int i = 0; i < 100;i++)
+  {
+    r.sleep();
+  }
   while(ros::ok)
   {
     ros::spinOnce(); //this line wasted 2 hours of my time.
