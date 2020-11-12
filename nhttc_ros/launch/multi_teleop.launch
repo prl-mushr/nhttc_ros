@@ -4,7 +4,10 @@
     <arg name="car2_name" default="car2" />
     <arg name="car3_name" default="car3" />
     <arg name="car4_name" default="car4" />
-
+    <arg name="car5_name" default="car5" />
+    <arg name="car6_name" default="car6" />
+    <arg name="car7_name" default="car7" />
+    <arg name="car8_name" default="car8" />
 
     <!-- Set to 1 if you want to run the map_server -->
     <arg name="map_server" value = "1"/>
@@ -18,20 +21,12 @@
     <group ns="$(arg car1_name)">
          <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car1_name)"/>
-
-            <!-- Could be racecar-mit, racecar-uw-tx2, or racecar-uw-nano -->
             <arg name="racecar_version" value="racecar-uw-nano"/>
-
-            <!-- The colors of the racecar, should be of the form "-<platform_color>-<inset_color>" -->
-            <!-- An empty string will result in the default URDF -->
-            <!-- Check CMakeLists.txt of mushr_description for appropriate values -->
             <arg name="racecar_color" value="" />
-<!--             <arg name="x_offset" value="10.0"/>
-            <arg name="y_offset" value="10.0"/>
-            <arg name="theta_offset" value="-3.14"/> -->
         </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="xterm -e" output="screen">
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
             <param name="car_name" value="car1"/>
+            <param name="solver_time" value="20"/>
         </node>
     </group>
 
@@ -41,12 +36,11 @@
             <arg name="car_name" value="$(arg car2_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
-<!--             <arg name="x_offset" value="0.0"/>
-            <arg name="y_offset" value="10.0"/>
-            <arg name="theta_offset" value="-1.57"/> -->
+
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
             <param name="car_name" value="car2"/>
+            <param name="solver_time" value="20"/>
         </node>
     </group>
 
@@ -55,12 +49,11 @@
             <arg name="car_name" value="$(arg car3_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
-<!--             <arg name="x_offset" value="10.0"/>
-            <arg name="y_offset" value="0.0"/>
-            <arg name="theta_offset" value="1.57"/> -->
+
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller3">
             <param name="car_name" value="car3"/>
+            <param name="solver_time" value="20"/>
         </node>
     </group>
 
@@ -69,15 +62,62 @@
             <arg name="car_name" value="$(arg car4_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
-<!--             <arg name="x_offset" default="0.0"/>
-            <arg name="y_offset" default="0.0"/>
-            <arg name="theta_offset" default="0.78"/> -->
+
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller4">
             <param name="car_name" value="car4"/>
+            <param name="solver_time" value="20"/>
         </node>
     </group>
-    <node pkg="nhttc_ros" type="pose_init.py" name="initializer"/>
+
+<!--     <group ns="$(arg car5_name)">
+        <include file="$(find mushr_sim)/launch/single_car.launch" >
+            <arg name="car_name" value="$(arg car5_name)"/>
+            <arg name="racecar_version" value="racecar-uw-nano"/>
+            <arg name="racecar_color" value="-green-black" />
+
+        </include>
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller5">
+            <param name="car_name" value="car5"/>
+        </node>
+    </group>
+
+    <group ns="$(arg car6_name)">
+        <include file="$(find mushr_sim)/launch/single_car.launch" >
+            <arg name="car_name" value="$(arg car6_name)"/>
+            <arg name="racecar_version" value="racecar-uw-nano"/>
+            <arg name="racecar_color" value="-green-black" />
+
+        </include>
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller6">
+            <param name="car_name" value="car6"/>
+        </node>
+    </group>
+
+    <group ns="$(arg car7_name)">
+        <include file="$(find mushr_sim)/launch/single_car.launch" >
+            <arg name="car_name" value="$(arg car7_name)"/>
+            <arg name="racecar_version" value="racecar-uw-nano"/>
+            <arg name="racecar_color" value="-green-black" />
+
+        </include>
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller7">
+            <param name="car_name" value="car7"/>
+        </node>
+    </group>
+
+    <group ns="$(arg car8_name)">
+        <include file="$(find mushr_sim)/launch/single_car.launch" >
+            <arg name="car_name" value="$(arg car8_name)"/>
+            <arg name="racecar_version" value="racecar-uw-nano"/>
+            <arg name="racecar_color" value="-green-black" />
+
+        </include>
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller8">
+            <param name="car_name" value="car8"/>
+        </node> -->
+    <!-- </group> -->
+    <node pkg="nhttc_ros" type="headache_pose_init.py" name="initializer"/>
     <!-- Launch third car, fourth car, etc by following above template -->
 
 </launch>
