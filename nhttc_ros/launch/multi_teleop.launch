@@ -117,7 +117,7 @@
             <param name="car_name" value="car8"/>
         </node> -->
     <!-- </group> -->
-    <node pkg="nhttc_ros" type="headache_pose_init.py" name="initializer"/>
+    <node pkg="nhttc_ros" type="nhttc_pose_init.py" name="initializer"/>
     <!-- Launch third car, fourth car, etc by following above template -->
 
 </launch>
