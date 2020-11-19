@@ -11,8 +11,7 @@
 class nhttc_ros
 {
 public:
-  ros::Subscriber sub_pose,sub_twist;
-  ros::Subscriber sub_other_pose[8],sub_other_odom[8];
+  ros::Subscriber sub_other_pose[8],sub_other_control[8];
   ros::Subscriber sub_goal;
   ros::Publisher pub_cmd;
 
@@ -24,7 +23,6 @@ public:
   Eigen::Vector2f goal;
   int own_index;
   int solver_time;
-  float max_velocity;
   SGDOptParams global_params;
   std::vector<Agent> agents; //all agents
   int count;
@@ -58,10 +56,32 @@ public:
     agents[i].SetEgo(x_o);
   }
 
+  void OtherControlCallback(const ackermann_msgs::AckermannDriveStamped::ConstPtr& msg, int i)
+  {
+    // for safety in case a car is initialized after all others have been init.
+    if(count<i)
+    {
+      int last_count = count+1;
+      count = i;
+      for(int i=last_count; i <= count;i++)
+      {
+        agent_setup(i);
+      }
+    }
+    Eigen::VectorXf controls = Eigen::VectorXf::Zero(2);
+    controls[0] = msg->drive.speed;
+    controls[1] = msg->drive.steering_angle;
+    if(i!=own_index)
+    {
+      agents[i].SetControls(controls);
+    }
+  }
+
   void GoalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
   {
     goal[0] = msg->pose.position.x;
     goal[1] = msg->pose.position.y;
+    agents[own_index].UpdateGoal(goal);
   }
 
   void send_commands(float speed, float steer) // speed is in m/s. steering is in radians
@@ -81,7 +101,6 @@ public:
     {
       solver_time = 10; // 10 ms solver time for each agent.
     }
-    max_velocity = 0.3;
     ConstructGlobalParams(&global_params);
     count = -1; //number of agents. start from -1.
     // solution for multi-agent setting
@@ -96,9 +115,15 @@ public:
       }
       s<<"/car_pose";
       sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherPoseCallback,this,_1,i));
+      s.str("");
+      s<<"/car";
+      s<<i+1;
+      s<<"/mux/ackermann_cmd_mux/input/navigation";
+      sub_other_control[i] = nh.subscribe<ackermann_msgs::AckermannDriveStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherControlCallback,this,_1,i));
     }
     sub_goal = nh.subscribe("/"+self_name+"/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
+    ROS_INFO("node started");
 
   }
 
@@ -118,9 +143,10 @@ public:
   {
     // create obstacle list.
     obstacles = BuildObstacleList(agents);
+
     agents[own_index].SetPlanTime(solver_time); //200 ms planning window
     agents[own_index].SetObstacles(obstacles, size_t(own_index));
-    agents[own_index].UpdateGoal(goal);
+      // agents[own_index].UpdateGoal(goal);
     Eigen::VectorXf controls = agents[own_index].UpdateControls();
 
     float speed = controls[0]; //speed in m/s
@@ -137,7 +163,7 @@ int main(int argc, char** argv)
   ros::NodeHandle nh("~");
   nhttc_ros local_planner(nh);
   ros::Rate r(50);
-  for(int i = 0; i < 250;i++) //wait for 5 seconds: this can be removed for the real world; it corresponds to the time taken by the rest of the stuff to init
+  for(int i = 0; i < 200;i++) //wait for 5 seconds: this can be removed for the real world; it corresponds to the time taken by the rest of the stuff to init
   {
     ros::spinOnce(); // spin but don't plan anything.
     r.sleep();
@@ -146,7 +172,7 @@ int main(int argc, char** argv)
   {
     ros::spinOnce(); //this line wasted 2 hours of my time.
     local_planner.plan();
-    r.sleep();
+    // r.sleep();
   }
   return 0;
 }
