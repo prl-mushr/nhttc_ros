@@ -21,9 +21,11 @@ def pose_callback(data,args):
 	if(count<args):
 		count = args
 
+# list of publishers and subscribers
 pub = []
 goal_pub = []
 sub = []
+# this is basically initializing all the subscribers for counting the number of cars and publishers for initiailizing pose and goal points.
 for i in range(8):
 	subscriber = rospy.Subscriber("/car" + str(i+1) + "/car_pose", PoseStamped, pose_callback,(i+1))
 	publisher = rospy.Publisher("/car" + str(i+1) + "/initialpose", PoseWithCovarianceStamped, queue_size=1)
@@ -32,13 +34,17 @@ for i in range(8):
 	pub.append(publisher)
 	goal_pub.append(goal_publisher)
 
-time.sleep(3)
+
+time.sleep(3) # give some time for the code to initialize.
+
+# initial pose setting -> not required in real; comment if not required.
 now = rospy.Time.now()
 cur_pose = PoseWithCovarianceStamped()
 cur_pose.header.frame_id = "/map"
 cur_pose.header.stamp = now
 
-R = 3*m.sqrt(2)
+# sets the cars on the circumference of a circle with radius = R. the positions are equi-distant (3 cars at 120 degrees, 4 at 90 and so on)
+R = 5*m.sqrt(2)
 print(count)
 for i in range(count):
 	fraction = float(i)/float(count)
@@ -55,6 +61,8 @@ for i in range(count):
 	cur_pose.pose.pose.orientation = angle_to_quaternion(rot)
 	pub[i].publish(cur_pose)
 
+
+# goal setting: sets the position of the goal points. goal points are diametrically opposite to the car's starting position.
 now = rospy.Time.now()
 goal_pose = PoseStamped()
 goal_pose.header.frame_id = "/map"
