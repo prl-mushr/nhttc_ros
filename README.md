@@ -27,7 +27,10 @@ compilation:
 cd catkin_ws
 catkin_make
 ```
-
+making all python nodes executable:
+```
+chmod 755 [filename].py
+```
 running:
 ```
 roslaunch nhttc_ros multi_teleop.launch
