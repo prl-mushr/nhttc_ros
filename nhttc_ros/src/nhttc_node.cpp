@@ -11,7 +11,7 @@
 class nhttc_ros
 {
 public:
-  ros::Subscriber sub_other_pose[8],sub_other_control[8];
+  ros::Subscriber sub_other_pose[16],sub_other_control[16];
   ros::Subscriber sub_goal;
   ros::Publisher pub_cmd;
 
@@ -23,6 +23,9 @@ public:
   Eigen::Vector2f goal;
   int own_index;
   int solver_time;
+  int num_agents_max;
+  bool simulation;
+  bool goal_received;
   SGDOptParams global_params;
   std::vector<Agent> agents; //all agents
   int count;
@@ -82,6 +85,7 @@ public:
     goal[0] = msg->pose.position.x;
     goal[1] = msg->pose.position.y;
     agents[own_index].UpdateGoal(goal);
+    goal_received = true;
   }
 
   void send_commands(float speed, float steer) // speed is in m/s. steering is in radians
@@ -95,16 +99,26 @@ public:
   }
   nhttc_ros(ros::NodeHandle &nh)
   {
-
+    goal_received = false; // start with the assumption that your life has no goal.
     nh.getParam("car_name",self_name);
     if(not nh.getParam("solver_time",solver_time))
     {
       solver_time = 10; // 10 ms solver time for each agent.
     }
+    if(not nh.getParam("sim",simulation))
+    {
+      simulation = true;
+    }
+    if(not nh.getParam("max_agents",num_agents_max))
+    {
+      num_agents_max = 8;
+    }
+
     ConstructGlobalParams(&global_params);
     count = -1; //number of agents. start from -1.
     // solution for multi-agent setting
-    for(int i=0;i<8;i++) //limit for i can be more but not less than the total no. of cars.
+    // set 8 -> make a param.
+    for(int i=0;i<num_agents_max;i++) //limit for i can be more but not less than the total no. of cars.
     { //you'd think that with ROS being such a widely used backend that it would be simple to convert an integer to a string but nooooooo I have to make it a stringstream, get the .str() of it, then get the .c_str() of that to make it work
       s.str("");
       s<<"/car";
@@ -112,8 +126,15 @@ public:
       if(s.str().c_str()=="/"+self_name)
       {
         own_index = i;
+      } // Add param for sim/real car_pose | mocap_pose
+      if(simulation)
+      {
+        s<<"/car_pose";
       }
-      s<<"/car_pose";
+      else
+      {
+        s<<"/mocap_pose";
+      }
       sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherPoseCallback,this,_1,i));
       s.str("");
       s<<"/car";
@@ -144,10 +165,21 @@ public:
     // create obstacle list.
     obstacles = BuildObstacleList(agents);
 
-    agents[own_index].SetPlanTime(solver_time); //200 ms planning window
+    agents[own_index].SetPlanTime(solver_time); //20 ms planning window
     agents[own_index].SetObstacles(obstacles, size_t(own_index));
-      // agents[own_index].UpdateGoal(goal);
-    Eigen::VectorXf controls = agents[own_index].UpdateControls();
+
+    Eigen::VectorXf controls = Eigen::VectorXf::Zero(2); //controls are 0,0 by default.
+    float dist = (agents[own_index].prob->params.x_0.head(2) - agents[own_index].goal).norm(); //distance from goal wp.
+    if(dist>0.2 and goal_received) // 20 cm tolerance to goal
+    {
+      controls = agents[own_index].UpdateControls();
+    }
+    if(dist<0.2 or !(goal_received))
+    {
+      controls[0] = 0;
+      controls[1] = 0;
+      // do something to announce that I have reached
+    }
 
     float speed = controls[0]; //speed in m/s
     float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right 
