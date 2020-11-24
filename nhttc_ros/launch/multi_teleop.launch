@@ -27,11 +27,13 @@
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
             <param name="car_name" value="car1"/>
             <param name="solver_time" value="20"/>
+            <param name="sim" value="0"/>
+            <param name="max_agents" value="4"/>
         </node>
     </group>
 
     <!-- Launch second car -->
-    <group ns="$(arg car2_name)">
+    <!-- <group ns="$(arg car2_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car2_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
@@ -42,9 +44,9 @@
             <param name="car_name" value="car2"/>
             <param name="solver_time" value="20"/>
         </node>
-    </group>
+    </group> -->
 
-    <group ns="$(arg car3_name)">
+    <!-- <group ns="$(arg car3_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car3_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
@@ -55,9 +57,9 @@
             <param name="car_name" value="car3"/>
             <param name="solver_time" value="20"/>
         </node>
-    </group>
+    </group> -->
 
-    <group ns="$(arg car4_name)">
+    <!-- <group ns="$(arg car4_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car4_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
@@ -68,7 +70,7 @@
             <param name="car_name" value="car4"/>
             <param name="solver_time" value="20"/>
         </node>
-    </group>
+    </group> -->
 
 <!--     <group ns="$(arg car5_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
