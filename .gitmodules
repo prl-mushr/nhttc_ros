@@ -1,3 +1,0 @@
-[submodule "NHTTC"]
-	path = nhttc_ros/NHTTC
-	url = git@github.com:steflayanto/NHTTC.git
