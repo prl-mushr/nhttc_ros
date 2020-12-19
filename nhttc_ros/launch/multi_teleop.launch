@@ -24,16 +24,16 @@
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="" />
         </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="xterm -e" output="screen">
             <param name="car_name" value="car1"/>
             <param name="solver_time" value="20"/>
-            <param name="sim" value="0"/>
+            <!-- <param name="sim" value="0"/> -->
             <param name="max_agents" value="4"/>
         </node>
     </group>
 
     <!-- Launch second car -->
-    <!-- <group ns="$(arg car2_name)">
+<!--     <group ns="$(arg car2_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car2_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
@@ -119,7 +119,8 @@
             <param name="car_name" value="car8"/>
         </node> -->
     <!-- </group> -->
-    <node pkg="nhttc_ros" type="nhttc_pose_init.py" name="initializer"/>
+
+    <node pkg="nhttc_ros" type="nhttc_publisher.py" name="initializer"/>
     <!-- Launch third car, fourth car, etc by following above template -->
 
 </launch>
