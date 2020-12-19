@@ -2,6 +2,7 @@
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/PoseArray.h"
 #include "ackermann_msgs/AckermannDriveStamped.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include <string>
@@ -12,8 +13,8 @@ class nhttc_ros
 {
 public:
   ros::Subscriber sub_other_pose[16],sub_other_control[16];
-  ros::Subscriber sub_goal;
-  ros::Publisher pub_cmd;
+  ros::Subscriber sub_goal,sub_wp;
+  ros::Publisher pub_cmd, viz_pub;
 
   std::string self_name;
   std::string other_name;
@@ -31,6 +32,9 @@ public:
   int count;
 
   std::vector<TTCObstacle*> obstacles = BuildObstacleList(agents);
+
+  std::vector<Eigen::Vector2f> waypoints;
+  int current_wp_index, max_index;
 
   void agent_setup(int i)
   {
@@ -80,6 +84,22 @@ public:
     }
   }
 
+  void WPCallBack(const geometry_msgs::PoseArray::ConstPtr& msg)
+  {
+    Eigen::Vector2f wp;
+    int num = msg->poses.size();//sizeof(msg->poses)/sizeof(msg->poses[0]);
+    for(int i =0;i<num;i++)
+    {
+      wp[0] = msg->poses[i].position.x;
+      wp[1] = msg->poses[i].position.y;
+      waypoints.push_back(wp);
+    }
+    goal_received = true;
+    goal = waypoints[current_wp_index]; // possible culprit
+    max_index = num;
+    return;
+  }
+
   void GoalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
   {
     goal[0] = msg->pose.position.x;
@@ -97,9 +117,21 @@ public:
     output_msg.drive.speed = speed;
     pub_cmd.publish(output_msg);
   }
+
+  void viz_publish()
+  {
+    geometry_msgs::PoseStamped output_msg;
+    output_msg.header.stamp = ros::Time::now();
+    output_msg.header.frame_id = "/map";
+    output_msg.pose.position.x = agents[own_index].goal[0];
+    output_msg.pose.position.y = agents[own_index].goal[1];
+    viz_pub.publish(output_msg);
+  }
   nhttc_ros(ros::NodeHandle &nh)
   {
     goal_received = false; // start with the assumption that your life has no goal.
+    current_wp_index = 0;
+    max_index = 0;
     nh.getParam("car_name",self_name);
     if(not nh.getParam("solver_time",solver_time))
     {
@@ -142,8 +174,10 @@ public:
       s<<"/mux/ackermann_cmd_mux/input/navigation";
       sub_other_control[i] = nh.subscribe<ackermann_msgs::AckermannDriveStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherControlCallback,this,_1,i));
     }
-    sub_goal = nh.subscribe("/"+self_name+"/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
+    // sub_goal = nh.subscribe("/"+self_name+"/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
+    sub_wp = nh.subscribe("/"+self_name+"/waypoints",10,&nhttc_ros::WPCallBack,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
+    viz_pub = nh.advertise<geometry_msgs::PoseStamped>("/"+self_name+"/cur_goal",10);
     ROS_INFO("node started");
 
   }
@@ -164,7 +198,6 @@ public:
   {
     // create obstacle list.
     obstacles = BuildObstacleList(agents);
-
     agents[own_index].SetPlanTime(solver_time); //20 ms planning window
     agents[own_index].SetObstacles(obstacles, size_t(own_index));
 
@@ -176,8 +209,17 @@ public:
     }
     if(dist<0.2 or !(goal_received))
     {
-      controls[0] = 0;
-      controls[1] = 0;
+      if(current_wp_index < max_index-1)
+      {
+        agents[own_index].goal = waypoints[++current_wp_index];
+        viz_publish();
+      }
+      else
+      {
+        controls[0] = 0;
+        controls[1] = 0;
+        goal_received = false;
+      }
       // do something to announce that I have reached
     }
 
