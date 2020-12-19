@@ -120,7 +120,7 @@
         </node> -->
     <!-- </group> -->
 
-    <node pkg="nhttc_ros" type="nhttc_publisher.py" name="initializer"/>
+    <node pkg="nhttc_ros" type="route_publisher.py" name="initializer"/>
     <!-- Launch third car, fourth car, etc by following above template -->
 
 </launch>
