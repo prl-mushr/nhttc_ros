@@ -80,4 +80,4 @@ for i in range(count):
 	if(rot< -2*m.pi):
 		rot += 2*m.pi
 	goal_pose.pose.orientation = angle_to_quaternion(rot)
-	goal_pub[i].publish(goal_pose)
+	# goal_pub[i].publish(goal_pose)
