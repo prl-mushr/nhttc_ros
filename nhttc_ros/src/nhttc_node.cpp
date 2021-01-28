@@ -95,7 +95,8 @@ public:
       waypoints.push_back(wp);
     }
     goal_received = true;
-    goal = waypoints[current_wp_index]; // possible culprit
+    goal = waypoints[current_wp_index]; 
+    agents[own_index].UpdateGoal(goal); // set the goal 
     max_index = num;
     return;
   }
@@ -202,27 +203,29 @@ public:
     agents[own_index].SetObstacles(obstacles, size_t(own_index));
 
     Eigen::VectorXf controls = Eigen::VectorXf::Zero(2); //controls are 0,0 by default.
-    float dist = (agents[own_index].prob->params.x_0.head(2) - agents[own_index].goal).norm(); //distance from goal wp.
-    if(dist>0.2 and goal_received) // 20 cm tolerance to goal
-    {
-      controls = agents[own_index].UpdateControls();
-    }
-    if(dist<0.2 or !(goal_received))
-    {
-      if(current_wp_index < max_index-1)
-      {
-        agents[own_index].goal = waypoints[++current_wp_index];
-        viz_publish();
-      }
-      else
-      {
-        controls[0] = 0;
-        controls[1] = 0;
-        goal_received = false;
-      }
-      // do something to announce that I have reached
-    }
+    if(goal_received)
+    {  
+      float dist = (agents[own_index].prob->params.x_0.head(2) - agents[own_index].goal).norm(); //distance from goal wp.
 
+      if(dist>0.2 + agents[own_index].prob->params.radius) // 20 cm tolerance to goal
+      {
+        controls = agents[own_index].UpdateControls();
+      }
+      if(dist<1.5 + agents[own_index].prob->params.radius)
+      {
+        if(current_wp_index < max_index-1)
+        {
+          agents[own_index].goal = waypoints[++current_wp_index];
+          viz_publish();
+        }
+        if(dist<0.05)
+        {
+          controls[0] = 0;
+          controls[1] = 0;
+          goal_received = false;
+        }
+      }
+    }
     float speed = controls[0]; //speed in m/s
     float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right 
     send_commands(speed,steering_angle); //just sending out anything for now;
@@ -246,7 +249,7 @@ int main(int argc, char** argv)
   {
     ros::spinOnce(); //this line wasted 2 hours of my time.
     local_planner.plan();
-    // r.sleep();
+    r.sleep();
   }
   return 0;
 }
