@@ -33,7 +33,7 @@
     </group>
 
     <!-- Launch second car -->
-<!--     <group ns="$(arg car2_name)">
+    <group ns="$(arg car2_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car2_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
@@ -44,9 +44,9 @@
             <param name="car_name" value="car2"/>
             <param name="solver_time" value="20"/>
         </node>
-    </group> -->
+    </group>
 
-    <!-- <group ns="$(arg car3_name)">
+<!--     <group ns="$(arg car3_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car3_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
@@ -57,9 +57,9 @@
             <param name="car_name" value="car3"/>
             <param name="solver_time" value="20"/>
         </node>
-    </group> -->
+    </group>
 
-    <!-- <group ns="$(arg car4_name)">
+    <group ns="$(arg car4_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car4_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
@@ -120,7 +120,8 @@
         </node> -->
     <!-- </group> -->
 
-    <node pkg="nhttc_ros" type="route_publisher.py" name="initializer"/>
+    <node pkg="nhttc_ros" type="nhttc_pose_init.py" name="initializer"/>
+    <!-- <node pkg="nhttc_ros" type="nhttc_publisher.py" name="waypointer"/> -->
     <!-- Launch third car, fourth car, etc by following above template -->
 
 </launch>
