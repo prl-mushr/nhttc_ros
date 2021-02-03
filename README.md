@@ -11,6 +11,10 @@ cd nhttc_ros/NHTTC
 git submodule init
 git submodule update --recursive
 ```
+please ensure that you have xterm installed! (used for debugging).
+```
+sudo apt install xterm
+```
 rviz setup:
 start roscore
 ```
