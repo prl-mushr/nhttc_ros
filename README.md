@@ -7,6 +7,9 @@ git clone https://github.com/naughtyStark/nhttc_ros.git
 cd nhttc_ros
 git submodule init
 git submodule update --recursive
+cd nhttc_ros/NHTTC
+git submodule init
+git submodule update --recursive
 ```
 rviz setup:
 start roscore
