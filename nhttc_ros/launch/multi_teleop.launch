@@ -40,7 +40,7 @@
             <arg name="racecar_color" value="-green-black" />
 
         </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="xterm -e" output="screen">
             <param name="car_name" value="car2"/>
             <param name="solver_time" value="20"/>
         </node>
