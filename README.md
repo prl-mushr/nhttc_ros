@@ -7,6 +7,13 @@ git clone https://github.com/naughtyStark/nhttc_ros.git
 cd nhttc_ros
 git submodule init
 git submodule update --recursive
+cd nhttc_ros/NHTTC
+git submodule init
+git submodule update --recursive
+```
+please ensure that you have xterm installed! (used for debugging).
+```
+sudo apt install xterm
 ```
 rviz setup:
 start roscore

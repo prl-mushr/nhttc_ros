@@ -175,7 +175,7 @@ public:
       s<<"/mux/ackermann_cmd_mux/input/navigation";
       sub_other_control[i] = nh.subscribe<ackermann_msgs::AckermannDriveStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherControlCallback,this,_1,i));
     }
-    // sub_goal = nh.subscribe("/"+self_name+"/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
+    sub_goal = nh.subscribe("/"+self_name+"/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
     sub_wp = nh.subscribe("/"+self_name+"/waypoints",10,&nhttc_ros::WPCallBack,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
     viz_pub = nh.advertise<geometry_msgs::PoseStamped>("/"+self_name+"/cur_goal",10);

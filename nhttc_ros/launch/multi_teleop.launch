@@ -38,10 +38,10 @@
             <arg name="car_name" value="$(arg car2_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
-        </include> -->
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" output="screen">
-            <param name="car_name" value="$(arg car2_name)"/>
-            <param name="sim" value="0"/>
+
+        </include>
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="xterm -e" output="screen">
+            <param name="car_name" value="car2"/>
             <param name="solver_time" value="20"/>
         </node>
     </group>
