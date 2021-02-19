@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import rospy
 import tf
 import tf.transformations
@@ -8,88 +7,71 @@ from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import PoseArray, Pose
 import math as m
 import time
-
-
-CARS = 1
-FRAME = "/map"
+import argparse
+import numpy as np
 
 rospy.init_node("route_publisher")
 
 count = 0
 
-def prepare_route():
-	# now = rospy.Time.now()
-	route = PoseArray()
-	route.header.frame_id = FRAME
-	route.header.stamp = rospy.Time.now()
-	for i in range(10):
-		p = Pose()
-		p.position.x, p.position.y, p.position.z = i, i, 0
-		p.orientation = angle_to_quaternion(m.pi/2)
-		route.poses.append(p)
-	return route
+def pose_callback(data,args):
+	global count
+	if(count<args):
+		count = args
 
+def prepare_route(args,tag):
+	# now = rospy.Time.now()
+	global count
+	R = 3.5
+	fraction = float(tag)/float(count)
+	angle = 2*m.pi*fraction
+	X0 = m.cos(angle)*R
+	Y0 = m.sin(angle)*R
+
+	route = PoseArray()
+	route.header.frame_id = "/map"
+	route.header.stamp = rospy.Time.now()
+	if(args.style == "straight"):
+		Xf,Yf = m.cos(angle+m.pi)*R,m.sin(angle+m.pi)*R
+		dX = (Xf - X0)*0.1
+		dY = (Yf - Y0)*0.1
+		print(dX,dY)
+		for i in range(10):
+			p = Pose()
+			p.position.x, p.position.y, p.position.z = X0 + float(i)*dX, Y0 + float(i)*dY, 0
+			p.orientation = angle_to_quaternion(m.pi/2)
+			route.poses.append(p)
+
+	if(args.style == "circle"):
+		R = 2.5
+		for i in range(10):
+			fraction = float(i)/10
+			angle = 2*m.pi*fraction
+			p = Pose()
+			if(tag%2):
+				p.position.x, p.position.y, p.position.z = R*m.cos(-m.pi/2 + angle), R*m.sin(- m.pi/2 + angle)+R, 0
+			else:
+				p.position.x, p.position.y, p.position.z = R*m.cos(-m.pi/2 -angle), R*m.sin(-m.pi/2 - angle)+R, 0
+			p.orientation = angle_to_quaternion(angle)
+			route.poses.append(p)
+	return route
 
 def angle_to_quaternion(angle):
     """Convert an angle in radians into a quaternion _message_."""
     return Quaternion(*tf.transformations.quaternion_from_euler(0, 0, angle))
 
-# list of publishers and subscribers
-pubs = []
-# this is basically initializing all the subscribers for counting the number of cars and publishers for initiailizing pose and goal points.
-for i in range(CARS):
-	publisher = rospy.Publisher("/car" + str(i+1) + "/waypoints", PoseArray, queue_size=1)
-	pubs.append(publisher)
-
-time.sleep(3) # give some time for the code to initialize.
-
-print("Route Publisher Running")
-
-while not rospy.is_shutdown():
-	for pub in pubs:
-		pub.publish(prepare_route())
-	time.sleep(3)
-# # initial pose setting -> not required in real; comment if not required.
-# now = rospy.Time.now()
-# cur_pose = PoseWithCovarianceStamped()
-# cur_pose.header.frame_id = FRAME
-# cur_pose.header.stamp = now
-
-# # sets the cars on the circumference of a circle with radius = R. the positions are equi-distant (3 cars at 120 degrees, 4 at 90 and so on)
-# R = 5*m.sqrt(2)
-# print(count)
-# for i in range(count):
-# 	fraction = float(i)/float(count)
-# 	angle = 2*m.pi*fraction
-# 	cur_pose.pose.pose.position.x = R*m.cos(angle)
-# 	cur_pose.pose.pose.position.y = R*m.sin(angle)
-# 	cur_pose.pose.pose.position.z = 0.0
-# 	rot = angle - m.pi
-# 	#wrap around
-# 	if(rot>2*m.pi):
-# 		rot -= 2*m.pi
-# 	if(rot< -2*m.pi):
-# 		rot += 2*m.pi
-# 	cur_pose.pose.pose.orientation = angle_to_quaternion(rot)
-# 	pub[i].publish(cur_pose)
-
-
-# # goal setting: sets the position of the goal points. goal points are diametrically opposite to the car's starting position.
-# now = rospy.Time.now()
-# goal_pose = PoseStamped()
-# goal_pose.header.frame_id = FRAME
-# goal_pose.header.stamp = now
-# for i in range(count):
-# 	fraction = float(i)/float(count)
-# 	angle = m.pi + 2*m.pi*fraction
-# 	goal_pose.pose.position.x = R*m.cos(angle)
-# 	goal_pose.pose.position.y = R*m.sin(angle)
-# 	goal_pose.pose.position.z = 0.0
-# 	rot = angle
-# 	#wrap around
-# 	if(rot>2*m.pi):
-# 		rot -= 2*m.pi
-# 	if(rot< -2*m.pi):
-# 		rot += 2*m.pi
-# 	goal_pose.pose.orientation = angle_to_quaternion(rot)
-# 	goal_pub[i].publish(goal_pose)
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser(description='mushr')
+	parser.add_argument('--style', type=str, default="straight", help="path style")
+	args = parser.parse_args()
+	sub = []
+	pub = []
+	for i in range(8):
+		subscriber = rospy.Subscriber("/car" + str(i+1) + "/car_pose", PoseStamped, pose_callback,(i+1))
+		publisher = rospy.Publisher("/car" + str(i+1) + "/waypoints", PoseArray, queue_size=1)
+		sub.append(subscriber)
+		pub.append(publisher)
+	print("Route Publisher Running",count)
+	time.sleep(1)
+	for i in range(count):
+		pub[i].publish(prepare_route(args,i))

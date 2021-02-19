@@ -27,6 +27,9 @@ public:
   int num_agents_max;
   bool simulation;
   bool goal_received;
+  float cutoff_dist;
+  float steer_limit;
+  float wheelbase;
   SGDOptParams global_params;
   std::vector<Agent> agents; //all agents
   int count;
@@ -88,6 +91,8 @@ public:
   {
     Eigen::Vector2f wp;
     int num = msg->poses.size();//sizeof(msg->poses)/sizeof(msg->poses[0]);
+    waypoints.clear(); // reset
+    current_wp_index = 0;
     for(int i =0;i<num;i++)
     {
       wp[0] = msg->poses[i].position.x;
@@ -179,8 +184,18 @@ public:
     sub_wp = nh.subscribe("/"+self_name+"/waypoints",10,&nhttc_ros::WPCallBack,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
     viz_pub = nh.advertise<geometry_msgs::PoseStamped>("/"+self_name+"/cur_goal",10);
+  
     ROS_INFO("node started");
+  }
 
+  void setup()
+  {
+    steer_limit = agents[own_index].prob->params.steer_limit;
+    wheelbase = agents[own_index].prob->params.wheelbase;
+    ROS_INFO("%f, %f",steer_limit,wheelbase);
+    fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = 3*wheelbase/tanf(fabs(steer_limit)); //CHANGED
+    cutoff_dist += agents[own_index].prob->params.radius;
+    ROS_INFO("%f",cutoff_dist);
   }
 
   void rpy_from_quat(float rpy[3],const geometry_msgs::PoseStamped::ConstPtr& msg) //not the best way to do it but I was getting errors when I tried to pass the pose.orientation cuz I don't understand the data type
@@ -207,22 +222,27 @@ public:
     {  
       float dist = (agents[own_index].prob->params.x_0.head(2) - agents[own_index].goal).norm(); //distance from goal wp.
 
-      if(dist>0.2 + agents[own_index].prob->params.radius) // 20 cm tolerance to goal
+      if(dist > cutoff_dist) // 20 cm tolerance to goal
       {
         controls = agents[own_index].UpdateControls();
       }
-      if(dist<1.5 + agents[own_index].prob->params.radius)
+      if(dist < cutoff_dist)
       {
         if(current_wp_index < max_index-1)
         {
           agents[own_index].goal = waypoints[++current_wp_index];
           viz_publish();
         }
-        if(dist<0.05)
+        if(dist < cutoff_dist*0.25 and current_wp_index >= max_index-1)
         {
+          ROS_INFO("reached");
           controls[0] = 0;
           controls[1] = 0;
           goal_received = false;
+        }
+        else
+        {
+          controls = agents[own_index].UpdateControls(); // in case it is the final waypoint
         }
       }
     }
@@ -245,6 +265,7 @@ int main(int argc, char** argv)
     ros::spinOnce(); // spin but don't plan anything.
     r.sleep();
   }
+  local_planner.setup();
   while(ros::ok)
   {
     ros::spinOnce(); //this line wasted 2 hours of my time.
