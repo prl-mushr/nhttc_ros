@@ -190,10 +190,11 @@ public:
 
   void setup()
   {
-    steer_limit = agents[own_index].prob->params.steer_limit;
+    steer_limit = 0.1*M_PI; // max steering angle ~18 degrees. :(. I wanted to tokyo drift with the MuSHR car. 
+    agents[own_index].prob->params.steer_limit = steer_limit;
     wheelbase = agents[own_index].prob->params.wheelbase;
     ROS_INFO("%f, %f",steer_limit,wheelbase);
-    fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = 3*wheelbase/tanf(fabs(steer_limit)); //CHANGED
+    fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = wheelbase/tanf(fabs(steer_limit)); //CHANGED
     cutoff_dist += agents[own_index].prob->params.radius;
     ROS_INFO("%f",cutoff_dist);
   }

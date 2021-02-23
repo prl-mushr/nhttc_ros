@@ -54,6 +54,43 @@ def prepare_route(args,tag):
 				p.position.x, p.position.y, p.position.z = R*m.cos(-m.pi/2 -angle), R*m.sin(-m.pi/2 - angle)+R, 0
 			p.orientation = angle_to_quaternion(angle)
 			route.poses.append(p)
+
+	if(args.style == "fly-by"):
+		dX = (0 - X0)/7.0
+		dY = 0.5
+		if(tag == 0):
+			for i in range(10):
+				p = Pose()
+				if(i<5):
+					p.position.x, p.position.y, p.position.z = X0+dX*i, Y0+0, 0
+				else:
+					p.position.x, p.position.y, p.position.z = 0, Y0+dY*(i-4), 0
+				p.orientation = angle_to_quaternion(m.pi/2)
+				route.poses.append(p)
+		else:
+			for i in range(10):
+				p = Pose()
+				p.position.x, p.position.y, p.position.z = X0+dX*i, Y0+0, 0
+				p.orientation = angle_to_quaternion(m.pi/2)
+				route.poses.append(p)
+	if(args.style == "halt"):
+		dX = (0 - X0)/7.0
+		dY = 0.5
+		if(tag == 0):
+			for i in range(14):
+				p = Pose()
+				if(i<10):
+					p.position.x, p.position.y, p.position.z = X0+dX*i, Y0+0, 0
+				else:
+					p.position.x, p.position.y, p.position.z = 2*dX, Y0+dY*(i-10), 0
+				p.orientation = angle_to_quaternion(m.pi/2)
+				route.poses.append(p)
+		else:
+			for i in range(6):
+				p = Pose()
+				p.position.x, p.position.y, p.position.z = X0+dX*i, Y0+0, 0
+				p.orientation = angle_to_quaternion(m.pi/2)
+				route.poses.append(p)
 	return route
 
 def angle_to_quaternion(angle):
@@ -62,7 +99,7 @@ def angle_to_quaternion(angle):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='mushr')
-	parser.add_argument('--style', type=str, default="straight", help="path style")
+	parser.add_argument('--style', type=str, default="fly-by", help="path style")
 	args = parser.parse_args()
 	sub = []
 	pub = []
