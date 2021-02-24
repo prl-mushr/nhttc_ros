@@ -59,10 +59,11 @@ if __name__ == '__main__':
 	# sets the cars on the circumference of a circle with radius = R. the positions are equi-distant (3 cars at 120 degrees, 4 at 90 and so on)
 	R = 5*m.sqrt(2)
 	print(CAR_COUNT)
+        count = CAR_COUNT
 	for i in range(CAR_COUNT):
 		name, sim = car_params[i]
                 print(car_params[i])
-		if sim:
+		if sim == "1":
 			fraction = float(i)/float(count)
 			angle = 2*m.pi*fraction
 			cur_pose.pose.pose.position.x = R*m.cos(angle)

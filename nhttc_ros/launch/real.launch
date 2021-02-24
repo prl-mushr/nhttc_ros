@@ -1,6 +1,6 @@
 <launch>
     <!-- <node type="rviz" name="rviz" pkg="rviz" args="-d $(find package_name)/rviz/multi_teleop.rviz" /> -->
-    <arg name="car_name" default="car30" />
+    <arg name="car_name" default="car" />
 
     <!-- Set to 1 if you want to run the map_server -->
     <arg name="map_server" value = "1"/>
@@ -18,7 +18,7 @@
             <param name="car_name" value="$(arg car_name)"/>
             <param name="solver_time" value="20"/>
             <param name="sim" value="0"/>
-            <param name="max_agents" value="4"/>
+            <param name="max_agents" value="1"/>
         </node>
     </group>
 

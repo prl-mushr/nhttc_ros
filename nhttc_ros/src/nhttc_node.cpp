@@ -155,7 +155,7 @@ public:
     { //you'd think that with ROS being such a widely used backend that it would be simple to convert an integer to a string but nooooooo I have to make it a stringstream, get the .str() of it, then get the .c_str() of that to make it work
       s.str("");
       s<<"/car";
-      s<<i+1;
+      //s<<i+1;
       if(s.str().c_str()=="/"+self_name)
       {
         own_index = i;
@@ -168,11 +168,13 @@ public:
       {
         s<<"/mocap_pose";
       }
+      ROS_INFO(s.str().c_str());
       sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherPoseCallback,this,_1,i));
       s.str("");
       s<<"/car";
-      s<<i+1;
+      //s<<i+1;
       s<<"/mux/ackermann_cmd_mux/input/navigation";
+      ROS_INFO(s.str().c_str());
       sub_other_control[i] = nh.subscribe<ackermann_msgs::AckermannDriveStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherControlCallback,this,_1,i));
     }
     sub_goal = nh.subscribe("/"+self_name+"/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
@@ -197,6 +199,11 @@ public:
 
   void plan()
   {
+    if (agents.size() <= 0)
+    {
+      ROS_INFO("WARNING: EMPTY AGENT ARRAY");
+    }
+    
     // create obstacle list.
     obstacles = BuildObstacleList(agents);
     agents[own_index].SetPlanTime(solver_time); //20 ms planning window
@@ -204,7 +211,7 @@ public:
 
     Eigen::VectorXf controls = Eigen::VectorXf::Zero(2); //controls are 0,0 by default.
     if(goal_received)
-    {  
+    {
       float dist = (agents[own_index].prob->params.x_0.head(2) - agents[own_index].goal).norm(); //distance from goal wp.
 
       if(dist>0.2 + agents[own_index].prob->params.radius) // 20 cm tolerance to goal
@@ -226,8 +233,9 @@ public:
         }
       }
     }
+
     float speed = controls[0]; //speed in m/s
-    float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right 
+    float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right
     send_commands(speed,steering_angle); //just sending out anything for now;
     return;
   }
