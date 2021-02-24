@@ -1,0 +1,32 @@
+<launch>
+    <!-- <node type="rviz" name="rviz" pkg="rviz" args="-d $(find package_name)/rviz/multi_teleop.rviz" /> -->
+    <arg name="car_name" default="car30" />
+
+    <!-- Set to 1 if you want to run the map_server -->
+    <arg name="map_server" value = "1"/>
+
+    <!-- Launch  map server-->
+    <group if="$(arg map_server)">
+       <!--  <include file="$(find mushr_sim)/launch/map_server.launch" /> -->
+	<include file="$(find mushr_rhc_ros)/launch/map_server.launch" />
+    </group>
+
+
+    <!-- Launch Car Node -->
+    <group ns="$(arg car_name)">
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" output="screen">
+            <param name="car_name" value="$(arg car_name)"/>
+            <param name="solver_time" value="20"/>
+            <param name="sim" value="0"/>
+            <param name="max_agents" value="4"/>
+        </node>
+    </group>
+
+    <node pkg="nhttc_ros" type="nhttc_pose_goal_init.py" name="initializer">
+        <param name="car_count" value="1"/>
+        <param name="car1_name-sim" value="$(arg car_name),0"/>
+    </node>
+    <!-- <node pkg="nhttc_ros" type="nhttc_publisher.py" name="waypointer"/> -->
+    <!-- Launch third car, fourth car, etc by following above template -->
+
+</launch>

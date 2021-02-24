@@ -14,7 +14,7 @@ def angle_to_quaternion(angle):
 
 def pose_callback(data,args):
 	global count
-	if(count<args):
+	if count < args:
 		count = args
 
 if __name__ == '__main__':
@@ -24,7 +24,9 @@ if __name__ == '__main__':
 	car_params = []
 	for i in range(CAR_COUNT):
 		car_params.append(rospy.get_param("~car" + str(i+1) + "_name-sim").split(','))
-
+	
+	assert CAR_COUNT == len(car_params)
+	
 	count = 0
 
 
@@ -58,19 +60,23 @@ if __name__ == '__main__':
 	R = 5*m.sqrt(2)
 	print(count)
 	for i in range(count):
-		fraction = float(i)/float(count)
-		angle = 2*m.pi*fraction
-		cur_pose.pose.pose.position.x = R*m.cos(angle)
-		cur_pose.pose.pose.position.y = R*m.sin(angle)
-		cur_pose.pose.pose.position.z = 0.0
-		rot = angle - m.pi
-		#wrap around
-		if(rot>2*m.pi):
-			rot -= 2*m.pi
-		if(rot< -2*m.pi):
-			rot += 2*m.pi
-		cur_pose.pose.pose.orientation = angle_to_quaternion(rot)
-		pub[i].publish(cur_pose)
+		name, sim = car_params[i]
+		if sim:
+			fraction = float(i)/float(count)
+			angle = 2*m.pi*fraction
+			cur_pose.pose.pose.position.x = R*m.cos(angle)
+			cur_pose.pose.pose.position.y = R*m.sin(angle)
+			cur_pose.pose.pose.position.z = 0.0
+			rot = angle - m.pi
+			#wrap around
+			if(rot>2*m.pi):
+				rot -= 2*m.pi
+			if(rot< -2*m.pi):
+				rot += 2*m.pi
+			cur_pose.pose.pose.orientation = angle_to_quaternion(rot)
+			pub[i].publish(cur_pose)
+		else:
+			print("Not setting initial pose for car", i)
 
 
 	# goal setting: sets the position of the goal points. goal points are diametrically opposite to the car's starting position.
