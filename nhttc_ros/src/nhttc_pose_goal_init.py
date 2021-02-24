@@ -19,7 +19,7 @@ def pose_callback(data,args):
 
 if __name__ == '__main__':
 	rospy.init_node('initializer')
-
+        print("Initializer Running")
 	CAR_COUNT = rospy.get_param("~car_count")
 	car_params = []
 	for i in range(CAR_COUNT):
@@ -58,9 +58,10 @@ if __name__ == '__main__':
 
 	# sets the cars on the circumference of a circle with radius = R. the positions are equi-distant (3 cars at 120 degrees, 4 at 90 and so on)
 	R = 5*m.sqrt(2)
-	print(count)
-	for i in range(count):
+	print(CAR_COUNT)
+	for i in range(CAR_COUNT):
 		name, sim = car_params[i]
+                print(car_params[i])
 		if sim:
 			fraction = float(i)/float(count)
 			angle = 2*m.pi*fraction

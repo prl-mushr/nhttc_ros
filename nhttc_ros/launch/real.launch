@@ -22,7 +22,7 @@
         </node>
     </group>
 
-    <node pkg="nhttc_ros" type="nhttc_pose_goal_init.py" name="initializer">
+    <node pkg="nhttc_ros" type="nhttc_pose_goal_init.py" name="initializer" output="screen">
         <param name="car_count" value="1"/>
         <param name="car1_name-sim" value="$(arg car_name),0"/>
     </node>
