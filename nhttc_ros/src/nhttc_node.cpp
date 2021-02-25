@@ -16,8 +16,10 @@ public:
   ros::Subscriber sub_goal,sub_wp;
   ros::Publisher pub_cmd, viz_pub;
 
+  int car_count;
   std::string self_name;
-  std::string other_name;
+  std::string other_name1, other_name2, other_name3, other_name4, other_name5, other_name6, other_name7;
+
   char index;
   std::ostringstream s;
 
@@ -133,16 +135,26 @@ public:
     goal_received = false; // start with the assumption that your life has no goal.
     current_wp_index = 0;
     max_index = 0;
-    nh.getParam("car_name",self_name);
-    if(not nh.getParam("solver_time",solver_time))
+
+    // Get car name information from launch file
+    nh.getParam("car_count", car_count);
+    nh.getParam("other_name1", other_name1);
+    nh.getParam("other_name2", other_name2);
+    nh.getParam("other_name3", other_name3);
+    nh.getParam("other_name4", other_name4);
+    nh.getParam("other_name5", other_name5);
+    nh.getParam("other_name6", other_name6);
+    nh.getParam("other_name7", other_name7);
+    
+    if(not nh.getParam("solver_time", solver_time))
     {
       solver_time = 10; // 10 ms solver time for each agent.
     }
-    if(not nh.getParam("sim",simulation))
+    if(not nh.getParam("sim", simulation))
     {
       simulation = true;
     }
-    if(not nh.getParam("max_agents",num_agents_max))
+    if(not nh.getParam("max_agents", num_agents_max))
     {
       num_agents_max = 8;
     }
@@ -160,14 +172,7 @@ public:
       {
         own_index = i;
       } // Add param for sim/real car_pose | mocap_pose
-      if(simulation)
-      {
-        s<<"/car_pose";
-      }
-      else
-      {
-        s<<"/mocap_pose";
-      }
+      s<<"/car_pose";
       ROS_INFO(s.str().c_str());
       sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherPoseCallback,this,_1,i));
       s.str("");
