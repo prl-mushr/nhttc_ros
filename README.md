@@ -3,10 +3,10 @@
 downloading all the files:
 ```
 cd catkin_ws/src
-git clone https://github.com/naughtyStark/nhttc_ros.git
+git clone --branch devel https://github.com/naughtyStark/nhttc_ros.git
 cd nhttc_ros
 git submodule init
-git submodule update --recursive
+git submodule update --force --recursive --init --remote
 ```
 rviz setup:
 start roscore
