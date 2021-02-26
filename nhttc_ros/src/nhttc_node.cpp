@@ -1,4 +1,5 @@
 #include "ros/ros.h"
+#include "ros/master.h"
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/PoseStamped.h"
@@ -8,7 +9,7 @@
 #include <string>
 #include <sstream>
 #include "nhttc_interface.h"
-
+#include <boost/algorithm/string.hpp>
 class nhttc_ros
 {
 public:
@@ -39,6 +40,8 @@ public:
   std::vector<Eigen::Vector2f> waypoints;
   int current_wp_index, max_index;
 
+  ros::master::V_TopicInfo master_topics;
+
   void agent_setup(int i)
   {
     Eigen::Vector2f goal(0.0,0.0);
@@ -48,15 +51,6 @@ public:
 
   void OtherPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg, int i)
   {
-    if(count<i)
-    {
-      int last_count = count+1;
-      count = i;
-      for(int i=last_count; i <= count;i++)
-      {
-        agent_setup(i);
-      }
-    }
     float rpy[3];
     Eigen::VectorXf x_o = Eigen::VectorXf::Zero(3);
     rpy_from_quat(rpy,msg);
@@ -68,16 +62,6 @@ public:
 
   void OtherControlCallback(const ackermann_msgs::AckermannDriveStamped::ConstPtr& msg, int i)
   {
-    // for safety in case a car is initialized after all others have been init.
-    if(count<i)
-    {
-      int last_count = count+1;
-      count = i;
-      for(int i=last_count; i <= count;i++)
-      {
-        agent_setup(i);
-      }
-    }
     Eigen::VectorXf controls = Eigen::VectorXf::Zero(2);
     controls[0] = msg->drive.speed;
     controls[1] = msg->drive.steering_angle;
@@ -156,35 +140,42 @@ public:
     count = -1; //number of agents. start from -1.
     // solution for multi-agent setting
     // set 8 -> make a param.
-    for(int i=0;i<num_agents_max;i++) //limit for i can be more but not less than the total no. of cars.
-    { //you'd think that with ROS being such a widely used backend that it would be simple to convert an integer to a string but nooooooo I have to make it a stringstream, get the .str() of it, then get the .c_str() of that to make it work
-      s.str("");
-      s<<"/car";
-      s<<i+1;
-      if(s.str().c_str()=="/"+self_name)
-      {
-        own_index = i;
-      } // Add param for sim/real car_pose | mocap_pose
-      if(simulation)
-      {
-        s<<"/car_pose";
-      }
-      else
-      {
-        s<<"/mocap_pose";
-      }
-      sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherPoseCallback,this,_1,i));
-      s.str("");
-      s<<"/car";
-      s<<i+1;
-      s<<"/mux/ackermann_cmd_mux/input/navigation";
-      sub_other_control[i] = nh.subscribe<ackermann_msgs::AckermannDriveStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherControlCallback,this,_1,i));
+    ros::Rate r(1);
+    for(int i=0;i<5;i++)
+    {
+      r.sleep();
     }
-    // sub_goal = nh.subscribe("/"+self_name+"/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
+    ros::master::getTopics(master_topics);
+
+    for (ros::master::V_TopicInfo::iterator it = master_topics.begin() ; it != master_topics.end(); it++) 
+    {
+      const ros::master::TopicInfo& info = *it;
+      std::vector<std::string> strs;
+      if(info.datatype == "geometry_msgs/PoseStamped")
+      {
+        boost::split(strs, info.name, boost::is_any_of("/"));
+        if(strs[2]=="car_pose")
+        {
+          count++;
+          if(strs[1] == self_name)
+          {
+            own_index = count;
+          }
+          agent_setup(count);
+
+          sub_other_pose[count] = nh.subscribe<geometry_msgs::PoseStamped>(info.name,10,boost::bind(&nhttc_ros::OtherPoseCallback,this,_1,count));
+          s.str("");
+          s<<"/";
+          s<<strs[1];
+          s<<"/mux/ackermann_cmd_mux/input/navigation";
+          sub_other_control[count] = nh.subscribe<ackermann_msgs::AckermannDriveStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherControlCallback,this,_1,count));
+        }
+      }
+    }
     sub_wp = nh.subscribe("/"+self_name+"/waypoints",10,&nhttc_ros::WPCallBack,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
     viz_pub = nh.advertise<geometry_msgs::PoseStamped>("/"+self_name+"/cur_goal",10);
-  
+    
     ROS_INFO("node started");
   }
 
@@ -193,6 +184,9 @@ public:
     steer_limit = 0.1*M_PI; // max steering angle ~18 degrees. :(. I wanted to tokyo drift with the MuSHR car. 
     agents[own_index].prob->params.steer_limit = steer_limit;
     wheelbase = agents[own_index].prob->params.wheelbase;
+    agents[own_index].prob->params.u_lb = Eigen::Vector2f(-0.3f, -0.1f * M_PI);
+    agents[own_index].prob->params.u_ub = Eigen::Vector2f(0.3f,0.1f * M_PI);
+    agents[own_index].prob->params.max_ttc = 6;
     ROS_INFO("%f, %f",steer_limit,wheelbase);
     fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = wheelbase/tanf(fabs(steer_limit)); //CHANGED
     cutoff_dist += agents[own_index].prob->params.radius;
@@ -222,7 +216,6 @@ public:
     if(goal_received)
     {  
       float dist = (agents[own_index].prob->params.x_0.head(2) - agents[own_index].goal).norm(); //distance from goal wp.
-
       if(dist > cutoff_dist) // 20 cm tolerance to goal
       {
         controls = agents[own_index].UpdateControls();
@@ -261,7 +254,7 @@ int main(int argc, char** argv)
   ros::NodeHandle nh("~");
   nhttc_ros local_planner(nh);
   ros::Rate r(50);
-  for(int i = 0; i < 200;i++) //wait for 5 seconds: this can be removed for the real world; it corresponds to the time taken by the rest of the stuff to init
+  for(int i = 0; i < 50;i++) //wait for 5 seconds: this can be removed for the real world; it corresponds to the time taken by the rest of the stuff to init
   {
     ros::spinOnce(); // spin but don't plan anything.
     r.sleep();
