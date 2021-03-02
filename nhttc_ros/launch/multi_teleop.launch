@@ -27,6 +27,8 @@
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="xterm -e" output="screen">
             <param name="car_name" value="car1"/>
             <param name="solver_time" value="20"/>
+            <param name="max_ttc" value="6"/>
+            <param name="carrot_goal_ratio" value="1"/>
             <!-- <param name="sim" value="0"/> -->
             <param name="max_agents" value="4"/>
         </node>
@@ -43,6 +45,8 @@
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
             <param name="car_name" value="car2"/>
             <param name="solver_time" value="20"/>
+            <param name="max_ttc" value="6"/>
+            <param name="carrot_goal_ratio" value="1"/>
         </node>
     </group>
 

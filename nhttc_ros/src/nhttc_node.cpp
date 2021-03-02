@@ -31,6 +31,8 @@ public:
   float cutoff_dist;
   float steer_limit;
   float wheelbase;
+  float carrot_goal_ratio;
+  float max_ttc;
   SGDOptParams global_params;
   std::vector<Agent> agents; //all agents
   int count;
@@ -41,6 +43,8 @@ public:
   int current_wp_index, max_index;
 
   ros::master::V_TopicInfo master_topics;
+
+  ros::Time begin;
 
   void agent_setup(int i)
   {
@@ -87,6 +91,7 @@ public:
     goal = waypoints[current_wp_index]; 
     agents[own_index].UpdateGoal(goal); // set the goal 
     max_index = num;
+    begin = ros::Time::now();
     return;
   }
 
@@ -134,6 +139,14 @@ public:
     if(not nh.getParam("max_agents",num_agents_max))
     {
       num_agents_max = 8;
+    }
+    if(not nh.getParam("carrot_goal_ratio",carrot_goal_ratio))
+    {
+      carrot_goal_ratio = 1.0f;
+    }
+    if(not nh.getParam("max_ttc",max_ttc))
+    {
+      max_ttc = 6.0f;
     }
 
     ConstructGlobalParams(&global_params);
@@ -186,11 +199,11 @@ public:
     wheelbase = agents[own_index].prob->params.wheelbase;
     agents[own_index].prob->params.u_lb = Eigen::Vector2f(-0.3f, -0.1f * M_PI);
     agents[own_index].prob->params.u_ub = Eigen::Vector2f(0.3f,0.1f * M_PI);
-    agents[own_index].prob->params.max_ttc = 6;
-    ROS_INFO("%f, %f",steer_limit,wheelbase);
-    fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = wheelbase/tanf(fabs(steer_limit)); //CHANGED
+    agents[own_index].prob->params.max_ttc = max_ttc;
+    ROS_INFO("max_ttc: %f, carrot_goal_ratio: %f",max_ttc, carrot_goal_ratio);
+    fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = carrot_goal_ratio*wheelbase/tanf(fabs(steer_limit)); 
     cutoff_dist += agents[own_index].prob->params.radius;
-    ROS_INFO("%f",cutoff_dist);
+    ROS_INFO("carrot_goal_dist: %f",cutoff_dist);
   }
 
   void rpy_from_quat(float rpy[3],const geometry_msgs::PoseStamped::ConstPtr& msg) //not the best way to do it but I was getting errors when I tried to pass the pose.orientation cuz I don't understand the data type
@@ -229,7 +242,8 @@ public:
         }
         if(dist < cutoff_dist*0.25 and current_wp_index >= max_index-1)
         {
-          ROS_INFO("reached");
+          float sec = float(ros::Time::now().toSec() - begin.toSec());
+          ROS_INFO("reached: %f",sec);
           controls[0] = 0;
           controls[1] = 0;
           goal_received = false;
