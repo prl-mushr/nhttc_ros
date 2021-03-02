@@ -28,7 +28,7 @@
             <param name="car_name" value="car1"/>
             <param name="solver_time" value="20"/>
             <param name="max_ttc" value="6"/>
-            <param name="carrot_goal_ratio" value="1"/>
+            <param name="carrot_goal_ratio" value="1.25"/>
             <!-- <param name="sim" value="0"/> -->
             <param name="max_agents" value="4"/>
         </node>
@@ -46,7 +46,8 @@
             <param name="car_name" value="car2"/>
             <param name="solver_time" value="20"/>
             <param name="max_ttc" value="6"/>
-            <param name="carrot_goal_ratio" value="1"/>
+            <param name="carrot_goal_ratio" value="1.25"/>
+            <param name="max_agents" value="4"/>
         </node>
     </group>
 

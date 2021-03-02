@@ -240,10 +240,13 @@ public:
           agents[own_index].goal = waypoints[++current_wp_index];
           viz_publish();
         }
-        if(dist < cutoff_dist*0.25 and current_wp_index >= max_index-1)
+        if(dist < 1.0)
         {
           float sec = float(ros::Time::now().toSec() - begin.toSec());
           ROS_INFO("reached: %f",sec);
+        }
+        if(dist < 0.3 and current_wp_index >= max_index-1)
+        {
           controls[0] = 0;
           controls[1] = 0;
           goal_received = false;
