@@ -26,21 +26,15 @@
     <!-- Launch Teleop -->
     <group>
 	<include file="$(find mushr_base)/launch/teleop.launch" />
-        <param name="car_name" default="$(arg own_name)" />
+        <arg name="car_name" value="$(arg own_name)" />
     </group>
 
     <!-- Launch Own Controller -->
-    <group ns="$(arg car_name)">
+    <group ns="$(arg own_name)">
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" output="screen">
             <param name="car_count" value="$(arg car_count)"/>
-            <param name="own_name" value="$(arg own_name)"/>
-            <param name="other_car1" value="$(arg other_car1)"/>
-            <param name="other_car2" value="$(arg other_car2)"/>
-            <param name="other_car3" value="$(arg other_car3)"/>
-            <param name="other_car4" value="$(arg other_car4)"/>
-            <param name="other_car5" value="$(arg other_car5)"/>
-            <param name="other_car6" value="$(arg other_car6)"/>
-            <param name="other_car7" value="$(arg other_car7)"/>
+            <param name="self_name" value="$(arg own_name)"/>
+            <param name="other_name1" value="$(arg other_car1)"/>
             
             <param name="solver_time" value="20"/>
             <param name="sim" value="0"/>
@@ -53,14 +47,14 @@
     <node pkg="nhttc_ros" type="nhttc_pose_goal_init.py" name="initializer" output="screen">
         <param name="car_count" value="$(arg car_count)"/>
         <!-- Each arg is a tuple of (car_name,boolean) of whether it is a sim car or not -->
-        <param name="own_name-sim" value="$(arg own_name),0"/>
-        <!-- <param name="other_car1-sim" value="$(arg other_car1),1"/>
-        <param name="other_car2-sim" value="$(arg other_car2),1"/>
-        <param name="other_car3-sim" value="$(arg other_car3),1"/>
-        <param name="other_car4-sim" value="$(arg other_car4),1"/>
-        <param name="other_car5-sim" value="$(arg other_car5),1"/>
-        <param name="other_car6-sim" value="$(arg other_car6),1"/>
-        <param name="other_car7-sim" value="$(arg other_car7),1"/> -->
+        <param name="car1_name-sim" value="$(arg own_name),0"/>
+        <param name="car2_name-sim" value="$(arg other_car1),0"/>
+        <param name="car3_name-sim" value="$(arg other_car2),1"/>
+        <param name="car4_name-sim" value="$(arg other_car3),1"/>
+        <param name="car5_name-sim" value="$(arg other_car4),1"/>
+        <param name="car6_name-sim" value="$(arg other_car5),1"/>
+        <param name="car7_name-sim" value="$(arg other_car6),1"/>
+	<param name="car8_name-sim" value="$(arg other_car7),1"/>
     </node>
     <!-- <node pkg="nhttc_ros" type="nhttc_publisher.py" name="waypointer"/> -->
 

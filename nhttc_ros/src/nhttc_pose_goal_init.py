@@ -84,7 +84,7 @@ if __name__ == '__main__':
 	goal_pose.header.stamp = now
 	print("Setting Initial Goals")
 	for i in range(CAR_COUNT):
-		fraction = float(i)/float(count)
+		fraction = float(i)/float(CAR_COUNT)
 		angle = m.pi + 2*m.pi*fraction
 		goal_pose.pose.position.x = R*m.cos(angle)
 		goal_pose.pose.position.y = R*m.sin(angle)
