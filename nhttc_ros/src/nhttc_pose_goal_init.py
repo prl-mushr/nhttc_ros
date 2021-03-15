@@ -36,10 +36,7 @@ if __name__ == '__main__':
 	sub = []
 	# this is basically initializing all the subscribers for counting the number of cars and publishers for initiailizing pose and goal points.
 	for name, sim in car_params:
-		if sim:
-			subscriber = rospy.Subscriber("/" + str(name) + "/car_pose", PoseStamped, pose_callback,(i+1))
-		else:
-			subscriber = rospy.Subscriber("/" + str(name) + "/mocap_pose", PoseStamped, pose_callback,(i+1))
+		subscriber = rospy.Subscriber("/" + str(name) + "/car_pose", PoseStamped, pose_callback,(i+1))
 
 		publisher = rospy.Publisher("/" + str(name) + "/initialpose", PoseWithCovarianceStamped, queue_size=1)
 		goal_publisher = rospy.Publisher("/" + str(name) + "/move_base_simple/goal", PoseStamped, queue_size=1)
@@ -59,10 +56,9 @@ if __name__ == '__main__':
 	# sets the cars on the circumference of a circle with radius = R. the positions are equi-distant (3 cars at 120 degrees, 4 at 90 and so on)
 	R = 5*m.sqrt(2)
 	print(CAR_COUNT)
-        count = CAR_COUNT
 	for i in range(CAR_COUNT):
 		name, sim = car_params[i]
-                print(car_params[i])
+		print(car_params[i])
 		if sim == "1":
 			fraction = float(i)/float(count)
 			angle = 2*m.pi*fraction
@@ -78,7 +74,7 @@ if __name__ == '__main__':
 			cur_pose.pose.pose.orientation = angle_to_quaternion(rot)
 			pub[i].publish(cur_pose)
 		else:
-			print("Not setting initial pose for car", i)
+			print("Not setting initial pose for car", name)
 
 
 	# goal setting: sets the position of the goal points. goal points are diametrically opposite to the car's starting position.
@@ -86,7 +82,8 @@ if __name__ == '__main__':
 	goal_pose = PoseStamped()
 	goal_pose.header.frame_id = "/map"
 	goal_pose.header.stamp = now
-	for i in range(count):
+	print("Setting Initial Goals")
+	for i in range(CAR_COUNT):
 		fraction = float(i)/float(count)
 		angle = m.pi + 2*m.pi*fraction
 		goal_pose.pose.position.x = R*m.cos(angle)
@@ -99,4 +96,4 @@ if __name__ == '__main__':
 		if(rot< -2*m.pi):
 			rot += 2*m.pi
 		goal_pose.pose.orientation = angle_to_quaternion(rot)
-		# goal_pub[i].publish(goal_pose)
+		goal_pub[i].publish(goal_pose)

@@ -19,7 +19,8 @@ public:
   int car_count;
   std::string self_name;
   std::string other_name1, other_name2, other_name3, other_name4, other_name5, other_name6, other_name7;
-
+  // std::string *other_names[7] = {&other_name1, &other_name2, &other_name3, &other_name4, &other_name5, &other_name6, &other_name7};
+  std::vector<std::string> other_names;
   char index;
   std::ostringstream s;
 
@@ -138,6 +139,7 @@ public:
 
     // Get car name information from launch file
     nh.getParam("car_count", car_count);
+    nh.getParam("self_name", self_name);
     nh.getParam("other_name1", other_name1);
     nh.getParam("other_name2", other_name2);
     nh.getParam("other_name3", other_name3);
@@ -145,6 +147,14 @@ public:
     nh.getParam("other_name5", other_name5);
     nh.getParam("other_name6", other_name6);
     nh.getParam("other_name7", other_name7);
+    
+    other_names.push_back(other_name1);
+    other_names.push_back(other_name2);
+    other_names.push_back(other_name3);
+    other_names.push_back(other_name4);
+    other_names.push_back(other_name5);
+    other_names.push_back(other_name6);
+    other_names.push_back(other_name7);
     
     if(not nh.getParam("solver_time", solver_time))
     {
@@ -166,20 +176,28 @@ public:
     for(int i=0;i<num_agents_max;i++) //limit for i can be more but not less than the total no. of cars.
     { //you'd think that with ROS being such a widely used backend that it would be simple to convert an integer to a string but nooooooo I have to make it a stringstream, get the .str() of it, then get the .c_str() of that to make it work
       s.str("");
-      s<<"/car";
-      //s<<i+1;
-      if(s.str().c_str()=="/"+self_name)
+      // if(s.str().c_str()=="/"+self_name)
+      if (i == 0)
       {
-        own_index = i;
+        own_index = 0;
+        s << "/" << self_name;
+      } else {
+        s << "/" << other_names[i - 1];
+        // ROS_INFO(other_names[i - 1].c_str());
       } // Add param for sim/real car_pose | mocap_pose
       s<<"/car_pose";
-      ROS_INFO(s.str().c_str());
+      // ROS_INFO(s.str().c_str());
       sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherPoseCallback,this,_1,i));
       s.str("");
-      s<<"/car";
-      //s<<i+1;
+      if (i == 0)
+      {
+        own_index = 0;
+        s << "/" << self_name;
+      } else {
+        s << "/" << other_names[i - 1];
+      } // Add param for sim/real car_pose | mocap_pose
       s<<"/mux/ackermann_cmd_mux/input/navigation";
-      ROS_INFO(s.str().c_str());
+      // ROS_INFO(s.str().c_str());
       sub_other_control[i] = nh.subscribe<ackermann_msgs::AckermannDriveStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherControlCallback,this,_1,i));
     }
     sub_goal = nh.subscribe("/"+self_name+"/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
@@ -206,7 +224,7 @@ public:
   {
     if (agents.size() <= 0)
     {
-      ROS_INFO("WARNING: EMPTY AGENT ARRAY");
+      ROS_INFO("WARNING: EMPTY AGENT ARRAY. This is usually caused by controller not being able to read topics, so make sure topic names are correctly set & being published.");
     }
     
     // create obstacle list.
@@ -217,6 +235,7 @@ public:
     Eigen::VectorXf controls = Eigen::VectorXf::Zero(2); //controls are 0,0 by default.
     if(goal_received)
     {
+      // ROS_INFO("New goal recieved");
       float dist = (agents[own_index].prob->params.x_0.head(2) - agents[own_index].goal).norm(); //distance from goal wp.
 
       if(dist>0.2 + agents[own_index].prob->params.radius) // 20 cm tolerance to goal
@@ -237,6 +256,8 @@ public:
           goal_received = false;
         }
       }
+    } else {
+      // ROS_INFO("No Goal recieved...");
     }
 
     float speed = controls[0]; //speed in m/s
