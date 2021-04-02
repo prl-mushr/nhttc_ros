@@ -15,7 +15,7 @@ class nhttc_ros
 public:
   ros::Subscriber sub_other_pose[16],sub_other_control[16];
   ros::Subscriber sub_goal,sub_wp;
-  ros::Publisher pub_cmd, viz_pub;
+  ros::Publisher pub_cmd, viz_pub, time_pub;
 
   std::string self_name;
   std::string other_name;
@@ -36,10 +36,14 @@ public:
   SGDOptParams global_params;
   std::vector<Agent> agents; //all agents
   int count;
+  float speed_lim = 0.4f;
+  float cur_time_stamp;
+  int time_index;
 
   std::vector<TTCObstacle*> obstacles = BuildObstacleList(agents);
 
   std::vector<Eigen::Vector2f> waypoints;
+  std::vector<float> time_stamps;
   int current_wp_index, max_index;
 
   ros::master::V_TopicInfo master_topics;
@@ -77,24 +81,32 @@ public:
 
   void WPCallBack(const geometry_msgs::PoseArray::ConstPtr& msg)
   {
-    Eigen::Vector2f wp;
+    Eigen::Vector2f wp,wp_last;
     int num = msg->poses.size();//sizeof(msg->poses)/sizeof(msg->poses[0]);
     waypoints.clear(); // reset
+    float time_stamp=0;
+    time_stamps.clear();
     current_wp_index = 0;
+    wp[0] = msg->poses[1].position.x - msg->poses[0].position.x;
+    wp[1] = msg->poses[1].position.y - msg->poses[0].position.y;
+    float time_step = wp.norm()/speed_lim;
     for(int i =0;i<num;i++)
     {
       wp[0] = msg->poses[i].position.x;
       wp[1] = msg->poses[i].position.y;
+      time_stamps.push_back(time_stamp);
+      time_stamp += (msg->poses[i].position.z*1000)*time_step;
       waypoints.push_back(wp);
     }
     goal_received = true;
     goal = waypoints[current_wp_index]; 
     agents[own_index].UpdateGoal(goal); // set the goal 
     max_index = num;
-    begin = ros::Time::now();
-    return;
+    cur_time_stamp = time_stamps[1];
+    time_index = 1; //reset
+    begin = ros::Time::now();// + ros::Duration(0.02); // add 0.02 seconds corresponding to the 50 hz update rate.
   }
-
+   
   void GoalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
   {
     goal[0] = msg->pose.position.x;
@@ -122,6 +134,17 @@ public:
     output_msg.pose.position.y = agents[own_index].goal[1];
     viz_pub.publish(output_msg);
   }
+
+  void time_viz_publish()
+  {
+    geometry_msgs::PoseStamped output_msg;
+    output_msg.header.stamp = ros::Time::now();
+    output_msg.header.frame_id = "/map";
+    output_msg.pose.position.x = waypoints[time_index][0];
+    output_msg.pose.position.y = waypoints[time_index][1];
+    time_pub.publish(output_msg);
+  }
+
   nhttc_ros(ros::NodeHandle &nh)
   {
     goal_received = false; // start with the assumption that your life has no goal.
@@ -188,17 +211,18 @@ public:
     sub_wp = nh.subscribe("/"+self_name+"/waypoints",10,&nhttc_ros::WPCallBack,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
     viz_pub = nh.advertise<geometry_msgs::PoseStamped>("/"+self_name+"/cur_goal",10);
-    
+    time_pub = nh.advertise<geometry_msgs::PoseStamped>("/"+self_name+"/time_goal",10);
     ROS_INFO("node started");
   }
 
   void setup()
   {
     steer_limit = 0.1*M_PI; // max steering angle ~18 degrees. :(. I wanted to tokyo drift with the MuSHR car. 
-    agents[own_index].prob->params.steer_limit = steer_limit;
     wheelbase = agents[own_index].prob->params.wheelbase;
-    agents[own_index].prob->params.u_lb = Eigen::Vector2f(-0.3f, -0.1f * M_PI);
-    agents[own_index].prob->params.u_ub = Eigen::Vector2f(0.3f,0.1f * M_PI);
+    agents[own_index].prob->params.steer_limit = steer_limit;
+    agents[own_index].prob->params.vel_limit = speed_lim;
+    agents[own_index].prob->params.u_lb = Eigen::Vector2f(-speed_lim, -steer_limit);
+    agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim,steer_limit);
     agents[own_index].prob->params.max_ttc = max_ttc;
     ROS_INFO("max_ttc: %f, carrot_goal_ratio: %f",max_ttc, carrot_goal_ratio);
     fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = carrot_goal_ratio*wheelbase/tanf(fabs(steer_limit)); 
@@ -226,9 +250,43 @@ public:
     agents[own_index].SetObstacles(obstacles, size_t(own_index));
 
     Eigen::VectorXf controls = Eigen::VectorXf::Zero(2); //controls are 0,0 by default.
+    Eigen::VectorXf agent_state = agents[own_index].prob->params.x_0;
     if(goal_received)
-    {  
-      float dist = (agents[own_index].prob->params.x_0.head(2) - agents[own_index].goal).norm(); //distance from goal wp.
+    { 
+      // Find distance to current nhttc waypoint  
+      Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
+      Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector 
+      float multiplier = wp_vec.dot(head_vec)>0? 1.0f : -1.0f; // dot product of the 2. +ve means the thing is ahead of me, -ve means it is behind
+      float dist = multiplier*wp_vec.norm(); //distance from goal wp taking into account the aspect angle. If the point is perpendicular to my direction of motion, I have probably passed it.
+
+      // now search for the nearest waypoint thats still ahead of me.
+      // note, this depends on previously calculated heading vector. This evaluation works similarly to the above calc.
+      wp_vec = (waypoints[time_index] - agent_state.head(2));
+      multiplier = wp_vec.dot(head_vec)>0? 1.0f : -1.0f;
+      float time_point_dist = multiplier*wp_vec.norm();
+      if(time_point_dist < agents[own_index].prob->params.safety_radius)
+      {
+        time_index++;
+        time_viz_publish();
+        // re-evaluate the time_point_distance
+        wp_vec = (waypoints[time_index] - agent_state.head(2));
+        multiplier = wp_vec.dot(head_vec)>0? 1.0f : -1.0f;
+        time_point_dist = multiplier*wp_vec.norm();
+      }
+
+      float current_time = float((ros::Time::now() - begin).toSec());
+      cur_time_stamp = time_stamps[time_index];  
+      float delta_time = cur_time_stamp - current_time;
+      float virtual_dist = delta_time*speed_lim;
+      float dist_error = time_point_dist - virtual_dist;
+      float delta_speed = std::min(std::max(dist_error*10,-speed_lim),speed_lim*2);
+      agents[own_index].prob->params.vel_limit = speed_lim + delta_speed;
+      agents[own_index].prob->params.u_lb = Eigen::Vector2f(-(speed_lim + delta_speed), -steer_limit);
+      agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim + delta_speed,steer_limit);
+      // if(fabs(dist_error)>=wheelbase*0.5)
+      // {
+      //   ROS_INFO("lag(+ve)/lead(-ve) in centimeters:%f",dist_error*100);
+      // }
       if(dist > cutoff_dist) // 20 cm tolerance to goal
       {
         controls = agents[own_index].UpdateControls();
@@ -239,11 +297,6 @@ public:
         {
           agents[own_index].goal = waypoints[++current_wp_index];
           viz_publish();
-        }
-        if(dist < 1.0)
-        {
-          float sec = float(ros::Time::now().toSec() - begin.toSec());
-          ROS_INFO("reached: %f",sec);
         }
         if(dist < 0.3 and current_wp_index >= max_index-1)
         {

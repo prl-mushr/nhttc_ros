@@ -9,6 +9,9 @@
     <arg name="car7_name" default="car7" />
     <arg name="car8_name" default="car8" />
 
+    <arg name="cgr" default = "1.0"/>
+    <arg name="mttc" default = "3"/>
+    <arg name="SolT" default = "20"/>
     <!-- Set to 1 if you want to run the map_server -->
     <arg name="map_server" value = "1"/>
 
@@ -26,9 +29,9 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="xterm -e" output="screen">
             <param name="car_name" value="car1"/>
-            <param name="solver_time" value="20"/>
-            <param name="max_ttc" value="6"/>
-            <param name="carrot_goal_ratio" value="1.25"/>
+            <param name="solver_time" value="$(arg SolT)"/>
+            <param name="max_ttc" value="$(arg mttc)"/>
+            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
             <!-- <param name="sim" value="0"/> -->
             <param name="max_agents" value="4"/>
         </node>
@@ -44,14 +47,14 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
             <param name="car_name" value="car2"/>
-            <param name="solver_time" value="20"/>
-            <param name="max_ttc" value="6"/>
-            <param name="carrot_goal_ratio" value="1.25"/>
+            <param name="solver_time" value="$(arg SolT)"/>
+            <param name="max_ttc" value="$(arg mttc)"/>
+            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
             <param name="max_agents" value="4"/>
         </node>
     </group>
 
-<!--     <group ns="$(arg car3_name)">
+    <group ns="$(arg car3_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car3_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
@@ -60,7 +63,9 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller3">
             <param name="car_name" value="car3"/>
-            <param name="solver_time" value="20"/>
+            <param name="solver_time" value="$(arg SolT)"/>
+            <param name="max_ttc" value="$(arg mttc)"/>
+            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
         </node>
     </group>
 
@@ -73,9 +78,11 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller4">
             <param name="car_name" value="car4"/>
-            <param name="solver_time" value="20"/>
+            <param name="solver_time" value="$(arg SolT)"/>
+            <param name="max_ttc" value="$(arg mttc)"/>
+            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
         </node>
-    </group> -->
+    </group>
 
 <!--     <group ns="$(arg car5_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
