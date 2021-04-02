@@ -58,7 +58,7 @@
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car3_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
-            <arg name="racecar_color" value="-green-black" />
+            <arg name="racecar_color" value="-red-white" />
 
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller3">
@@ -73,7 +73,7 @@
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car4_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
-            <arg name="racecar_color" value="-green-black" />
+            <arg name="racecar_color" value="-purple-gold" />
 
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller4">

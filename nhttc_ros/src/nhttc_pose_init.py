@@ -45,15 +45,15 @@ cur_pose.header.frame_id = "/map"
 cur_pose.header.stamp = now
 
 # sets the cars on the circumference of a circle with radius = R. the positions are equi-distant (3 cars at 120 degrees, 4 at 90 and so on)
-R = 3.5
+R = 2.5
 if(count==1): # just one agent fellas.
 	R = 0
 # print(count)
 for i in range(count):
 	fraction = float(i)/float(count)
 	angle = 2*m.pi*fraction
-	cur_pose.pose.pose.position.x = R*m.cos(angle) 
-	cur_pose.pose.pose.position.y = R*m.sin(angle)
+	cur_pose.pose.pose.position.x = R*m.cos(angle) + R
+	cur_pose.pose.pose.position.y = 0.6*R*m.sin(angle) - 0.6*R
 	cur_pose.pose.pose.position.z = 0.0
 	if(count==1):
 		rot = 0
