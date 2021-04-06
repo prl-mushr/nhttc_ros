@@ -83,17 +83,31 @@ if __name__ == '__main__':
 	goal_pose.header.frame_id = "/map"
 	goal_pose.header.stamp = now
 	print("Setting Initial Goals")
-	for i in range(CAR_COUNT):
-		fraction = float(i)/float(CAR_COUNT)
-		angle = m.pi + 2*m.pi*fraction
-		goal_pose.pose.position.x = R*m.cos(angle)
-		goal_pose.pose.position.y = R*m.sin(angle)
-		goal_pose.pose.position.z = 0.0
-		rot = angle
-		#wrap around
-		if(rot>2*m.pi):
-			rot -= 2*m.pi
-		if(rot< -2*m.pi):
-			rot += 2*m.pi
-		goal_pose.pose.orientation = angle_to_quaternion(rot)
-		goal_pub[i].publish(goal_pose)
+	# for i in range(CAR_COUNT):
+	# 	fraction = float(i)/float(CAR_COUNT)
+	# 	angle = m.pi + 2*m.pi*fraction
+	# 	goal_pose.pose.position.x = -R*m.cos(angle) / 2
+	# 	goal_pose.pose.position.y = R*m.sin(angle) * 2
+	# 	goal_pose.pose.position.z = 0.0
+	# 	rot = angle
+	# 	#wrap around
+	# 	if(rot>2*m.pi):
+	# 		rot -= 2*m.pi
+	# 	if(rot< -2*m.pi):
+	# 		rot += 2*m.pi
+	# 	goal_pose.pose.orientation = angle_to_quaternion(rot)
+	# 	goal_pub[i].publish(goal_pose)
+
+	fraction = 0 / float(CAR_COUNT)
+	angle = m.pi + 2*m.pi*fraction
+	goal_pose.pose.position.x = 2
+	goal_pose.pose.position.y = 4
+	goal_pose.pose.position.z = 0.0
+	rot = angle
+	#wrap around
+	if(rot>2*m.pi):
+		rot -= 2*m.pi
+	if(rot< -2*m.pi):
+		rot += 2*m.pi
+	goal_pose.pose.orientation = angle_to_quaternion(rot)
+	goal_pub[0].publish(goal_pose)

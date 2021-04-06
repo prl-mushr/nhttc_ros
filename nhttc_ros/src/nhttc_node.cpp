@@ -222,6 +222,7 @@ public:
 
   void plan()
   {
+    // ROS_INFO("Start of plan cycle");
     if (agents.size() <= 0)
     {
       ROS_INFO("WARNING: EMPTY AGENT ARRAY. This is usually caused by controller not being able to read topics, so make sure topic names are correctly set & being published.");
@@ -235,6 +236,7 @@ public:
     Eigen::VectorXf controls = Eigen::VectorXf::Zero(2); //controls are 0,0 by default.
     if(goal_received)
     {
+      viz_publish();
       // ROS_INFO("New goal recieved");
       float dist = (agents[own_index].prob->params.x_0.head(2) - agents[own_index].goal).norm(); //distance from goal wp.
 
@@ -260,9 +262,10 @@ public:
       // ROS_INFO("No Goal recieved...");
     }
 
-    float speed = controls[0]; //speed in m/s
+    float speed = controls[0] * 2; //speed in m/s
     float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right
     send_commands(speed,steering_angle); //just sending out anything for now;
+    // ROS_INFO("End plan cycle");
     return;
   }
 

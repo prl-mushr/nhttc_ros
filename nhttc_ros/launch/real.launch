@@ -25,8 +25,9 @@
 
     <!-- Launch Teleop -->
     <group>
-	<include file="$(find mushr_base)/launch/teleop.launch" />
-        <arg name="car_name" value="$(arg own_name)" />
+	<include file="$(find mushr_base)/launch/teleop.launch" >
+	        <arg name="car_name" value="$(arg own_name)" />
+	</include>
     </group>
 
     <!-- Launch Own Controller -->
