@@ -12,7 +12,8 @@
     <arg name="cgr" default = "1.0"/>
     <arg name="mttc" default = "3"/>
     <arg name="SolT" default = "20"/>
-    <!-- Set to 1 if you want to run the map_server -->
+    <arg name="follow_time" default = "true" />
+    <!-- Set to 1 if you want to run the map_server --> --> -->
     <arg name="map_server" value = "1"/>
 
     <!-- Launch  map server-->
@@ -32,7 +33,7 @@
             <param name="solver_time" value="$(arg SolT)"/>
             <param name="max_ttc" value="$(arg mttc)"/>
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
-            <!-- <param name="sim" value="0"/> -->
+            <param name="obey_time" value = "$(arg follow_time)" />
             <param name="max_agents" value="4"/>
         </node>
     </group>
@@ -50,6 +51,7 @@
             <param name="solver_time" value="$(arg SolT)"/>
             <param name="max_ttc" value="$(arg mttc)"/>
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
+            <param name="obey_time" value = "$(arg follow_time)" />
             <param name="max_agents" value="4"/>
         </node>
     </group>
@@ -66,6 +68,8 @@
             <param name="solver_time" value="$(arg SolT)"/>
             <param name="max_ttc" value="$(arg mttc)"/>
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
+            <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="max_agents" value="4"/>
         </node>
     </group>
 
@@ -81,6 +85,8 @@
             <param name="solver_time" value="$(arg SolT)"/>
             <param name="max_ttc" value="$(arg mttc)"/>
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
+            <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="max_agents" value="4"/>
         </node>
     </group>
 

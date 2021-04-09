@@ -37,6 +37,7 @@ public:
   float cutoff_dist;
   float steer_limit;
   float wheelbase;
+  float turning_radius;
   float carrot_goal_ratio;
   float max_ttc;
   SGDOptParams global_params;
@@ -45,6 +46,7 @@ public:
   float speed_lim = 0.4f;
   float cur_time_stamp;
   int time_index;
+  bool obey_time;
 
   std::vector<TTCObstacle*> obstacles = BuildObstacleList(agents);
 
@@ -252,6 +254,10 @@ public:
     {
       max_ttc = 6.0f;
     }
+    if(not nh.getParam("obey_time", obey_time))
+    {
+      obey_time = false;// false by default
+    }
 
     ConstructGlobalParams(&global_params);
     count = -1; //number of agents. start from -1.
@@ -313,13 +319,15 @@ public:
     wheelbase = agents[own_index].prob->params.wheelbase;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.vel_limit = speed_lim;
-    agents[own_index].prob->params.u_lb = Eigen::Vector2f(-speed_lim, -steer_limit);
+    agents[own_index].prob->params.u_lb = Eigen::Vector2f(0, -steer_limit);
     agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim,steer_limit);
     agents[own_index].prob->params.max_ttc = max_ttc;
     ROS_INFO("max_ttc: %f, carrot_goal_ratio: %f",max_ttc, carrot_goal_ratio);
-    fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = carrot_goal_ratio*wheelbase/tanf(fabs(steer_limit)); 
+    turning_radius = wheelbase/tanf(fabs(steer_limit));
+    fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = carrot_goal_ratio*turning_radius; 
     cutoff_dist += agents[own_index].prob->params.radius;
     ROS_INFO("carrot_goal_dist: %f",cutoff_dist);
+    ROS_INFO("obey_time:%d",int(obey_time));
   }
 
   /**
@@ -343,9 +351,8 @@ public:
       // Find distance to current nhttc waypoint  
       Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
       Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector 
-      float multiplier = wp_vec.dot(head_vec)>0? 1.0f : -1.0f; // dot product of the 2. +ve means the thing is ahead of me, -ve means it is behind
+      float multiplier = wp_vec.dot(head_vec)>0 || wp_vec.norm() > turning_radius ? 1.0f : -1.0f; // dot product of the 2. +ve means the thing is ahead of me, -ve means it is behind. The and condition is to ensure this is only valid when the waypoint is closer than the turning radius. Might wanna change it 2xturning radius but I have a feeling that may backfire.
       float dist = multiplier*wp_vec.norm(); //distance from goal wp taking into account the aspect angle. If the point is perpendicular to my direction of motion, I have probably passed it.
-
       // now search for the nearest waypoint thats still ahead of me.
       // note, this depends on previously calculated heading vector. This evaluation works similarly to the above calc.
       wp_vec = (waypoints[time_index] - agent_state.head(2));
@@ -361,15 +368,18 @@ public:
         time_point_dist = multiplier*wp_vec.norm();
       }
 
-      float current_time = float((ros::Time::now() - begin).toSec()); //the current time relative to the time at which the plans were published.
-      cur_time_stamp = time_stamps[time_index];  // time stamp by which the car must arrive at the time-waypoint. The time waypoint is simply the next closest waypoint in the plan.
-      float delta_time = cur_time_stamp - current_time; //time left to reach the time-waypoint
-      float virtual_dist = delta_time*speed_lim; // distance from the time-waypoint at which the car should be if it had to travel at the default speed
-      float dist_error = time_point_dist - virtual_dist; // error between the expected distance-to-go and the actual distance-to-go
-      float delta_speed = std::min(std::max(dist_error*10,-speed_lim),speed_lim*2); // a Proportional controller for changing the speed with some min-max limits
-      agents[own_index].prob->params.vel_limit = speed_lim + delta_speed; //set the new speed limit 
-      agents[own_index].prob->params.u_lb = Eigen::Vector2f(-(speed_lim + delta_speed), -steer_limit); // set the upper and lower bound corresponding to this limit
-      agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim + delta_speed,steer_limit);
+      if(obey_time)
+      {
+        float current_time = float((ros::Time::now() - begin).toSec()); //the current time relative to the time at which the plans were published.
+        cur_time_stamp = time_stamps[time_index];  // time stamp by which the car must arrive at the time-waypoint. The time waypoint is simply the next closest waypoint in the plan.
+        float delta_time = cur_time_stamp - current_time; //time left to reach the time-waypoint
+        float virtual_dist = delta_time*speed_lim; // distance from the time-waypoint at which the car should be if it had to travel at the default speed
+        float dist_error = time_point_dist - virtual_dist; // error between the expected distance-to-go and the actual distance-to-go
+        float delta_speed = std::min(std::max(dist_error*10,-speed_lim),speed_lim*2); // a Proportional controller for changing the speed with some min-max limits
+        agents[own_index].prob->params.vel_limit = speed_lim + delta_speed; //set the new speed limit 
+        agents[own_index].prob->params.u_lb = Eigen::Vector2f(-(speed_lim + delta_speed), -steer_limit); // set the upper and lower bound corresponding to this limit
+        agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim + delta_speed,steer_limit);
+      }
 
       if(dist > cutoff_dist) // cutoff distance is the tolerance to goal. When goal-distance is less than cutoff, the goal is assumed to be reached
       {
