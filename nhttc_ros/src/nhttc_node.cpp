@@ -47,6 +47,7 @@ public:
   float cur_time_stamp;
   int time_index;
   bool obey_time;
+  bool allow_reverse;
 
   std::vector<TTCObstacle*> obstacles = BuildObstacleList(agents);
 
@@ -240,23 +241,27 @@ public:
     }
     if(not nh.getParam("sim",simulation))
     {
-      simulation = true;
+      simulation = true; // run in simulation by default.
     }
     if(not nh.getParam("max_agents",num_agents_max))
     {
-      num_agents_max = 8;
+      num_agents_max = 8; // default maximum number of agents
     }
     if(not nh.getParam("carrot_goal_ratio",carrot_goal_ratio))
     {
-      carrot_goal_ratio = 1.0f;
+      carrot_goal_ratio = 1.0f; //default distance to the ever-changing goal
     }
     if(not nh.getParam("max_ttc",max_ttc))
     {
-      max_ttc = 6.0f;
+      max_ttc = 6.0f; // default ttc 
     }
     if(not nh.getParam("obey_time", obey_time))
     {
       obey_time = false;// false by default
+    }
+    if(not nh.getParam("allow_reverse", allow_reverse))
+    {
+      allow_reverse = true;// true by default (default behavior is to not have any constraints on the nav engine)
     }
 
     ConstructGlobalParams(&global_params);
@@ -319,7 +324,7 @@ public:
     wheelbase = agents[own_index].prob->params.wheelbase;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.vel_limit = speed_lim;
-    agents[own_index].prob->params.u_lb = Eigen::Vector2f(0, -steer_limit);
+    agents[own_index].prob->params.u_lb = Eigen::Vector2f(-speed_lim, -steer_limit);
     agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim,steer_limit);
     agents[own_index].prob->params.max_ttc = max_ttc;
     ROS_INFO("max_ttc: %f, carrot_goal_ratio: %f",max_ttc, carrot_goal_ratio);
