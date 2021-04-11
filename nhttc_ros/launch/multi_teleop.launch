@@ -9,6 +9,10 @@
     <arg name="car7_name" default="car7" />
     <arg name="car8_name" default="car8" /> -->
 
+    <arg name="cgr" default = "1.0"/>
+    <arg name="mttc" default = "3"/>
+    <arg name="SolT" default = "20"/>
+    <arg name="follow_time" default = "true" />
     <!-- Set to 1 if you want to run the map_server -->
     <arg name="map_server" value = "1"/>
 
@@ -19,63 +23,74 @@
 
     <!-- Launch first car -->
     <group ns="$(arg car1_name)">
-         <!-- <include file="$(find mushr_sim)/launch/single_car.launch" >
+        <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car1_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="" />
-        </include> -->
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" output="screen">
-            <param name="self_name" value="$(arg car1_name)"/>
-            <param name="other_name1" value="$(arg car2_name)"/>
-            <param name="solver_time" value="20"/>
-            <param name="sim" value="0"/>
-            <param name="max_agents" value="2"/>
+        </include>
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="xterm -e" output="screen">
+            <param name="car_name" value="car1"/>
+            <param name="solver_time" value="$(arg SolT)"/>
+            <param name="max_ttc" value="$(arg mttc)"/>
+            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
+            <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="max_agents" value="4"/>
         </node>
     </group>
 
     <!-- Launch second car -->
     <group ns="$(arg car2_name)">
-        <!-- <include file="$(find mushr_sim)/launch/single_car.launch" >
+        <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car2_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
 
-        </include> -->
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="xterm -e" output="screen">
-            <param name="self_name" value="$(arg car2_name)"/>
-            <param name="other_name1" value="$(arg car1_name)"/>
-            <param name="solver_time" value="20"/>
-            <param name="sim" value="0"/>
-            <param name="max_agents" value="2"/>
+        </include>
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
+            <param name="car_name" value="car2"/>
+            <param name="solver_time" value="$(arg SolT)"/>
+            <param name="max_ttc" value="$(arg mttc)"/>
+            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
+            <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="max_agents" value="4"/>
         </node>
     </group>
-<!--
-     <group ns="$(arg car3_name)">
+
+    <!-- Launch third car -->
+    <group ns="$(arg car3_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car3_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
-            <arg name="racecar_color" value="-green-black" />
+            <arg name="racecar_color" value="-red-white" />
 
         </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller3" launch-prefix="xterm -e" output="screen">
-            <param name="car_name" value="$(arg car3_name)"/>
-            <param name="sim" value="1"/>
-            <param name="solver_time" value="20"/>
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller3">
+            <param name="car_name" value="car3"/>
+            <param name="solver_time" value="$(arg SolT)"/>
+            <param name="max_ttc" value="$(arg mttc)"/>
+            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
+            <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="max_agents" value="4"/>
         </node>
-    </group>-->
+    </group>
 
-<!--    <group ns="$(arg car4_name)">
+    <!-- Launch fourth car -->
+    <group ns="$(arg car4_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car4_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
-            <arg name="racecar_color" value="-green-black" />
+            <arg name="racecar_color" value="-purple-gold" />
 
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller4">
             <param name="car_name" value="car4"/>
-            <param name="solver_time" value="20"/>
+            <param name="solver_time" value="$(arg SolT)"/>
+            <param name="max_ttc" value="$(arg mttc)"/>
+            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
+            <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="max_agents" value="4"/>
         </node>
-    </group> -->
+    </group>
 
 <!--     <group ns="$(arg car5_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
@@ -127,9 +142,10 @@
 
     <node pkg="nhttc_ros" type="nhttc_pose_goal_init.py" name="initializer" output="screen">
         <param name="car_count" value="2"/>
-        <param name="car1_name-sim" value="$(arg car1_name),0"/>
-        <param name="car2_name-sim" value="$(arg car2_name),0"/>
-        <!-- <param name="car3_name-sim" value="$(arg car3_name),1"/> -->
+        <param name="car1_name-sim" value="$(arg car1_name),1"/>
+        <param name="car2_name-sim" value="$(arg car2_name),1"/>
+        <param name="car3_name-sim" value="$(arg car3_name),1"/>
+        <param name="car4_name-sim" value="$(arg car3_name),1"/>
     </node>
     <!-- <node pkg="nhttc_ros" type="nhttc_publisher.py" name="waypointer"/> -->
     <!-- Launch third car, fourth car, etc by following above template -->
