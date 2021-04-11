@@ -3,8 +3,8 @@
     <arg name="car1_name" default="car30" />
     <arg name="car2_name" default="car38" />
     <arg name="car3_name" default="car_sim" />
-    <!-- <arg name="car4_name" default="car4" />
-    <arg name="car5_name" default="car5" />
+    <arg name="car4_name" default="car4" />
+    <!-- <arg name="car5_name" default="car5" />
     <arg name="car6_name" default="car6" />
     <arg name="car7_name" default="car7" />
     <arg name="car8_name" default="car8" /> -->
@@ -145,7 +145,7 @@
         <param name="car1_name-sim" value="$(arg car1_name),1"/>
         <param name="car2_name-sim" value="$(arg car2_name),1"/>
         <param name="car3_name-sim" value="$(arg car3_name),1"/>
-        <param name="car4_name-sim" value="$(arg car3_name),1"/>
+        <param name="car4_name-sim" value="$(arg car4_name),1"/>
     </node>
     <!-- <node pkg="nhttc_ros" type="nhttc_publisher.py" name="waypointer"/> -->
     <!-- Launch third car, fourth car, etc by following above template -->
