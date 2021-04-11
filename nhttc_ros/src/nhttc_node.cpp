@@ -16,8 +16,11 @@ public:
   ros::Subscriber sub_goal,sub_wp;
   ros::Publisher pub_cmd, viz_pub;
 
+  int car_count;
   std::string self_name;
-  std::string other_name;
+  std::string other_name1, other_name2, other_name3, other_name4, other_name5, other_name6, other_name7;
+  // std::string *other_names[7] = {&other_name1, &other_name2, &other_name3, &other_name4, &other_name5, &other_name6, &other_name7};
+  std::vector<std::string> other_names;
   char index;
   std::ostringstream s;
 
@@ -133,16 +136,35 @@ public:
     goal_received = false; // start with the assumption that your life has no goal.
     current_wp_index = 0;
     max_index = 0;
-    nh.getParam("car_name",self_name);
-    if(not nh.getParam("solver_time",solver_time))
+
+    // Get car name information from launch file
+    nh.getParam("car_count", car_count);
+    nh.getParam("self_name", self_name);
+    nh.getParam("other_name1", other_name1);
+    nh.getParam("other_name2", other_name2);
+    nh.getParam("other_name3", other_name3);
+    nh.getParam("other_name4", other_name4);
+    nh.getParam("other_name5", other_name5);
+    nh.getParam("other_name6", other_name6);
+    nh.getParam("other_name7", other_name7);
+    
+    other_names.push_back(other_name1);
+    other_names.push_back(other_name2);
+    other_names.push_back(other_name3);
+    other_names.push_back(other_name4);
+    other_names.push_back(other_name5);
+    other_names.push_back(other_name6);
+    other_names.push_back(other_name7);
+    
+    if(not nh.getParam("solver_time", solver_time))
     {
       solver_time = 10; // 10 ms solver time for each agent.
     }
-    if(not nh.getParam("sim",simulation))
+    if(not nh.getParam("sim", simulation))
     {
       simulation = true;
     }
-    if(not nh.getParam("max_agents",num_agents_max))
+    if(not nh.getParam("max_agents", num_agents_max))
     {
       num_agents_max = 8;
     }
@@ -154,25 +176,28 @@ public:
     for(int i=0;i<num_agents_max;i++) //limit for i can be more but not less than the total no. of cars.
     { //you'd think that with ROS being such a widely used backend that it would be simple to convert an integer to a string but nooooooo I have to make it a stringstream, get the .str() of it, then get the .c_str() of that to make it work
       s.str("");
-      s<<"/car";
-      s<<i+1;
-      if(s.str().c_str()=="/"+self_name)
+      // if(s.str().c_str()=="/"+self_name)
+      if (i == 0)
       {
-        own_index = i;
+        own_index = 0;
+        s << "/" << self_name;
+      } else {
+        s << "/" << other_names[i - 1];
+        // ROS_INFO(other_names[i - 1].c_str());
       } // Add param for sim/real car_pose | mocap_pose
-      if(simulation)
-      {
-        s<<"/car_pose";
-      }
-      else
-      {
-        s<<"/mocap_pose";
-      }
+      s<<"/car_pose";
+      // ROS_INFO(s.str().c_str());
       sub_other_pose[i] = nh.subscribe<geometry_msgs::PoseStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherPoseCallback,this,_1,i));
       s.str("");
-      s<<"/car";
-      s<<i+1;
+      if (i == 0)
+      {
+        own_index = 0;
+        s << "/" << self_name;
+      } else {
+        s << "/" << other_names[i - 1];
+      } // Add param for sim/real car_pose | mocap_pose
       s<<"/mux/ackermann_cmd_mux/input/navigation";
+      // ROS_INFO(s.str().c_str());
       sub_other_control[i] = nh.subscribe<ackermann_msgs::AckermannDriveStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::OtherControlCallback,this,_1,i));
     }
     sub_goal = nh.subscribe("/"+self_name+"/move_base_simple/goal",10,&nhttc_ros::GoalCallback,this);
@@ -197,6 +222,12 @@ public:
 
   void plan()
   {
+    // ROS_INFO("Start of plan cycle");
+    if (agents.size() <= 0)
+    {
+      ROS_INFO("WARNING: EMPTY AGENT ARRAY. This is usually caused by controller not being able to read topics, so make sure topic names are correctly set & being published.");
+    }
+    
     // create obstacle list.
     obstacles = BuildObstacleList(agents);
     agents[own_index].SetPlanTime(solver_time); //20 ms planning window
@@ -204,7 +235,9 @@ public:
 
     Eigen::VectorXf controls = Eigen::VectorXf::Zero(2); //controls are 0,0 by default.
     if(goal_received)
-    {  
+    {
+      viz_publish();
+      // ROS_INFO("New goal recieved");
       float dist = (agents[own_index].prob->params.x_0.head(2) - agents[own_index].goal).norm(); //distance from goal wp.
 
       if(dist>0.2 + agents[own_index].prob->params.radius) // 20 cm tolerance to goal
@@ -225,10 +258,14 @@ public:
           goal_received = false;
         }
       }
+    } else {
+      // ROS_INFO("No Goal recieved...");
     }
-    float speed = controls[0]; //speed in m/s
-    float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right 
+
+    float speed = controls[0] * 2; //speed in m/s
+    float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right
     send_commands(speed,steering_angle); //just sending out anything for now;
+    // ROS_INFO("End plan cycle");
     return;
   }
 
