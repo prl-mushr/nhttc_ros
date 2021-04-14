@@ -15,7 +15,7 @@
     <arg name="other_car7" default = "car8"/>
 
     <!-- Set to 1 if you want to run the map_server -->
-    <arg name="map_server" value = "1"/>
+    <arg name="map_server" value = "0"/>
 
     <!-- Launch  map server-->
     <group if="$(arg map_server)">
@@ -32,19 +32,17 @@
     <!-- Launch Own Controller -->
     <group ns="$(arg own_name)">
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" output="screen">
-            <param name="car_count" value="$(arg car_count)"/>
-            <param name="self_name" value="$(arg own_name)"/>
-            <param name="other_name1" value="$(arg other_car1)"/>
-            
-            <param name="solver_time" value="20"/>
-            <param name="sim" value="0"/>
-            
-            <!-- Currently set this equal to car count but this may need to be fixed -->
             <param name="max_agents" value="$(arg car_count)"/>
+            <param name="car_name" value="$(arg own_name)"/>
+            <param name="solver_time" value="$(arg SolT)"/>
+            <param name="max_ttc" value="$(arg mttc)"/>
+            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
+            <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="max_agents" value="2"/>
         </node>
     </group>
 
-    <node pkg="nhttc_ros" type="nhttc_pose_goal_init.py" name="initializer" output="screen">
+    <!-- <node pkg="nhttc_ros" type="nhttc_pose_goal_init.py" name="initializer" output="screen">
         <param name="car_count" value="$(arg car_count)"/>
         <!-- Each arg is a tuple of (car_name,boolean) of whether it is a sim car or not -->
         <param name="car1_name-sim" value="$(arg own_name),0"/>
@@ -55,7 +53,7 @@
         <param name="car6_name-sim" value="$(arg other_car5),1"/>
         <param name="car7_name-sim" value="$(arg other_car6),1"/>
 	<param name="car8_name-sim" value="$(arg other_car7),1"/>
-    </node>
+    </node> -->
     <!-- <node pkg="nhttc_ros" type="nhttc_publisher.py" name="waypointer"/> -->
 
 </launch>
