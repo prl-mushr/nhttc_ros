@@ -53,7 +53,7 @@ for i in range(count):
 	fraction = float(i)/float(count)
 	angle = 2*m.pi*fraction
 	cur_pose.pose.pose.position.x = R*m.cos(angle) + R
-	cur_pose.pose.pose.position.y = 0.6*R*m.sin(angle) - 0.6*R
+	cur_pose.pose.pose.position.y = 0.8*R*m.sin(angle) + 0.8*R
 	cur_pose.pose.pose.position.z = 0.0
 	if(count==1):
 		rot = 0

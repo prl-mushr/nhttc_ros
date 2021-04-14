@@ -344,75 +344,78 @@ public:
   void plan()
   {
     // create obstacle list.
-    obstacles = BuildObstacleList(agents);
-    agents[own_index].SetPlanTime(solver_time); //20 ms planning window TODO: see if this only needs to be done once
-    agents[own_index].SetObstacles(obstacles, size_t(own_index)); // set the obstacles 
+    if(agents.size()>0)
+    {
+      obstacles = BuildObstacleList(agents);
+      agents[own_index].SetPlanTime(solver_time); //20 ms planning window TODO: see if this only needs to be done once
+      agents[own_index].SetObstacles(obstacles, size_t(own_index)); // set the obstacles 
 
-    Eigen::VectorXf controls = Eigen::VectorXf::Zero(2); //controls are 0,0 by default.
-    Eigen::VectorXf agent_state = agents[own_index].prob->params.x_0; //get agent's current state
-    //if we have a goal
-    if(goal_received)
-    { 
-      // Find distance to current nhttc waypoint  
-      Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
-      Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector 
-      float multiplier = wp_vec.dot(head_vec)>0 || wp_vec.norm() > turning_radius ? 1.0f : -1.0f; // dot product of the 2. +ve means the thing is ahead of me, -ve means it is behind. The and condition is to ensure this is only valid when the waypoint is closer than the turning radius. Might wanna change it 2xturning radius but I have a feeling that may backfire.
-      float dist = wp_vec.norm(); //distance from goal wp taking into account the aspect angle. If the point is perpendicular to my direction of motion, I have probably passed it.
-      // now search for the nearest waypoint thats still ahead of me.
-      // note, this depends on previously calculated heading vector. This evaluation works similarly to the above calc.
-      wp_vec = (waypoints[time_index] - agent_state.head(2));
-      multiplier = wp_vec.dot(head_vec)>0? 1.0f : -1.0f;
-      float time_point_dist = multiplier*wp_vec.norm();
-      if(time_point_dist < agents[own_index].prob->params.safety_radius)
-      {
-        time_index++;
-        time_viz_publish();
-        // re-evaluate the time_point_distance
+      Eigen::VectorXf controls = Eigen::VectorXf::Zero(2); //controls are 0,0 by default.
+      Eigen::VectorXf agent_state = agents[own_index].prob->params.x_0; //get agent's current state
+      //if we have a goal
+      if(goal_received)
+      { 
+        // Find distance to current nhttc waypoint  
+        Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
+        Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector 
+        float multiplier = wp_vec.dot(head_vec)>0 || wp_vec.norm() > turning_radius ? 1.0f : -1.0f; // dot product of the 2. +ve means the thing is ahead of me, -ve means it is behind. The and condition is to ensure this is only valid when the waypoint is closer than the turning radius. Might wanna change it 2xturning radius but I have a feeling that may backfire.
+        float dist = multiplier*wp_vec.norm(); //distance from goal wp taking into account the aspect angle. If the point is perpendicular to my direction of motion, I have probably passed it.
+        // now search for the nearest waypoint thats still ahead of me.
+        // note, this depends on previously calculated heading vector. This evaluation works similarly to the above calc.
         wp_vec = (waypoints[time_index] - agent_state.head(2));
         multiplier = wp_vec.dot(head_vec)>0? 1.0f : -1.0f;
-        time_point_dist = multiplier*wp_vec.norm();
-      }
+        float time_point_dist = multiplier*wp_vec.norm();
+        if(time_point_dist < agents[own_index].prob->params.safety_radius)
+        {
+          time_index++;
+          time_viz_publish();
+          // re-evaluate the time_point_distance
+          wp_vec = (waypoints[time_index] - agent_state.head(2));
+          multiplier = wp_vec.dot(head_vec)>0? 1.0f : -1.0f;
+          time_point_dist = multiplier*wp_vec.norm();
+        }
 
-      if(obey_time)
-      {
-        float current_time = float((ros::Time::now() - begin).toSec()); //the current time relative to the time at which the plans were published.
-        cur_time_stamp = time_stamps[time_index];  // time stamp by which the car must arrive at the time-waypoint. The time waypoint is simply the next closest waypoint in the plan.
-        float delta_time = cur_time_stamp - current_time; //time left to reach the time-waypoint
-        float virtual_dist = delta_time*speed_lim; // distance from the time-waypoint at which the car should be if it had to travel at the default speed
-        float dist_error = time_point_dist - virtual_dist; // error between the expected distance-to-go and the actual distance-to-go
-        float delta_speed = std::min(std::max(dist_error*10,-speed_lim),speed_lim*2); // a Proportional controller for changing the speed with some min-max limits
-        agents[own_index].prob->params.vel_limit = speed_lim + delta_speed; //set the new speed limit 
-        agents[own_index].prob->params.u_lb = Eigen::Vector2f(-(speed_lim + delta_speed), -steer_limit); // set the upper and lower bound corresponding to this limit
-        agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim + delta_speed,steer_limit);
-      }
+        if(obey_time)
+        {
+          float current_time = float((ros::Time::now() - begin).toSec()); //the current time relative to the time at which the plans were published.
+          cur_time_stamp = time_stamps[time_index];  // time stamp by which the car must arrive at the time-waypoint. The time waypoint is simply the next closest waypoint in the plan.
+          float delta_time = cur_time_stamp - current_time; //time left to reach the time-waypoint
+          float virtual_dist = delta_time*speed_lim; // distance from the time-waypoint at which the car should be if it had to travel at the default speed
+          float dist_error = time_point_dist - virtual_dist; // error between the expected distance-to-go and the actual distance-to-go
+          float delta_speed = std::min(std::max(dist_error*10,-speed_lim),speed_lim*2); // a Proportional controller for changing the speed with some min-max limits
+          agents[own_index].prob->params.vel_limit = speed_lim + delta_speed; //set the new speed limit 
+          agents[own_index].prob->params.u_lb = Eigen::Vector2f(-(speed_lim + delta_speed), -steer_limit); // set the upper and lower bound corresponding to this limit
+          agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim + delta_speed,steer_limit);
+        }
 
-      if(dist > cutoff_dist) // cutoff distance is the tolerance to goal. When goal-distance is less than cutoff, the goal is assumed to be reached
-      {
-        controls = agents[own_index].UpdateControls();
+        if(dist > cutoff_dist) // cutoff distance is the tolerance to goal. When goal-distance is less than cutoff, the goal is assumed to be reached
+        {
+          controls = agents[own_index].UpdateControls();
+        }
+        if(dist < cutoff_dist)
+        {
+          if(current_wp_index < max_index-1)
+          {
+            agents[own_index].goal = waypoints[++current_wp_index];
+            viz_publish(); // publish new goal point 
+          }
+          if(dist < wheelbase and current_wp_index >= max_index-1) //condition for having reached the final waypoint. the cutoff distance for the final waypoint is less than the standard cutoff. This can later be extended to "must-pass" waypoints.
+          {
+            controls[0] = 0;
+            controls[1] = 0;
+            goal_received = false;
+          }
+          else
+          {
+            controls = agents[own_index].UpdateControls(); // in case it is the final waypoint, keep going until dist-to-go is less than wheelbase
+          }
+        }
       }
-      if(dist < cutoff_dist)
-      {
-        if(current_wp_index < max_index-1)
-        {
-          agents[own_index].goal = waypoints[++current_wp_index];
-          viz_publish(); // publish new goal point 
-        }
-        if(dist < wheelbase and current_wp_index >= max_index-1) //condition for having reached the final waypoint. the cutoff distance for the final waypoint is less than the standard cutoff. This can later be extended to "must-pass" waypoints.
-        {
-          controls[0] = 0;
-          controls[1] = 0;
-          goal_received = false;
-        }
-        else
-        {
-          controls = agents[own_index].UpdateControls(); // in case it is the final waypoint, keep going until dist-to-go is less than wheelbase
-        }
-      }
+      float speed = controls[0]; //speed in m/s
+      float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right 
+      send_commands(speed,steering_angle); //just sending out anything for now;
+      return;
     }
-    float speed = controls[0]; //speed in m/s
-    float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right 
-    send_commands(speed,steering_angle); //just sending out anything for now;
-    return;
   }
 };
 

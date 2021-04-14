@@ -13,6 +13,7 @@
     <arg name="mttc" default = "3"/>
     <arg name="SolT" default = "20"/>
     <arg name="follow_time" default = "true" />
+    <arg name="reverse" default = "false"/>
     <!-- Set to 1 if you want to run the map_server --> --> -->
     <arg name="map_server" value = "1"/>
 
@@ -34,6 +35,8 @@
             <param name="max_ttc" value="$(arg mttc)"/>
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
             <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="allow_reverse" value = "$(arg reverse)" />
+            <param name="allow_reverse" value = "$(arg reverse)" />
             <param name="max_agents" value="4"/>
         </node>
     </group>
@@ -52,6 +55,7 @@
             <param name="max_ttc" value="$(arg mttc)"/>
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
             <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="allow_reverse" value = "$(arg reverse)" />
             <param name="max_agents" value="4"/>
         </node>
     </group>
@@ -69,6 +73,7 @@
             <param name="max_ttc" value="$(arg mttc)"/>
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
             <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="allow_reverse" value = "$(arg reverse)" />
             <param name="max_agents" value="4"/>
         </node>
     </group>
@@ -86,6 +91,7 @@
             <param name="max_ttc" value="$(arg mttc)"/>
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
             <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="allow_reverse" value = "$(arg reverse)" />
             <param name="max_agents" value="4"/>
         </node>
     </group>
@@ -138,7 +144,7 @@
         </node> -->
     <!-- </group> -->
 
-    <node pkg="nhttc_ros" type="nhttc_pose_init.py" name="initializer"/>
+    <!-- <node pkg="nhttc_ros" type="nhttc_pose_init.py" name="initializer"/> -->
     <!-- <node pkg="nhttc_ros" type="nhttc_publisher.py" name="waypointer"/> -->
     <!-- Launch third car, fourth car, etc by following above template -->
 
