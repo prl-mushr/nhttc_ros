@@ -357,7 +357,7 @@ public:
       Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
       Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector 
       float multiplier = wp_vec.dot(head_vec)>0 || wp_vec.norm() > turning_radius ? 1.0f : -1.0f; // dot product of the 2. +ve means the thing is ahead of me, -ve means it is behind. The and condition is to ensure this is only valid when the waypoint is closer than the turning radius. Might wanna change it 2xturning radius but I have a feeling that may backfire.
-      float dist = multiplier*wp_vec.norm(); //distance from goal wp taking into account the aspect angle. If the point is perpendicular to my direction of motion, I have probably passed it.
+      float dist = wp_vec.norm(); //distance from goal wp taking into account the aspect angle. If the point is perpendicular to my direction of motion, I have probably passed it.
       // now search for the nearest waypoint thats still ahead of me.
       // note, this depends on previously calculated heading vector. This evaluation works similarly to the above calc.
       wp_vec = (waypoints[time_index] - agent_state.head(2));
