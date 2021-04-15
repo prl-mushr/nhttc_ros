@@ -53,6 +53,7 @@ public:
 
   std::vector<Eigen::Vector2f> waypoints;
   std::vector<float> time_stamps;
+  std::vector<std::string> name_list;
   int current_wp_index, max_index;
 
   ros::master::V_TopicInfo master_topics;
@@ -223,6 +224,53 @@ public:
     time_pub.publish(output_msg);
   }
 
+  void check_new_agents(ros::NodeHandle &nh)
+  {
+    ros::master::getTopics(master_topics);
+
+    for (ros::master::V_TopicInfo::iterator it = master_topics.begin() ; it != master_topics.end(); it++) 
+    {
+      const ros::master::TopicInfo& info = *it;
+      std::vector<std::string> strs;
+      if(info.datatype == "geometry_msgs/PoseStamped")
+      {
+        boost::split(strs, info.name, boost::is_any_of("/"));
+        if(!strs.empty())
+        {
+          if(strs[2]=="car_pose" or strs[2]=="mocap_pose")
+          {
+            bool common = false;
+            for(int i=0;i<=name_list.size() and name_list.size()!=0 ;i++)
+            {
+              if(strs[1]==name_list[i])
+              {
+                common = true;
+              }
+            }
+            if(not common)
+            {
+              ROS_INFO("car found:%s",strs[1].c_str());
+              name_list.push_back(strs[1]);
+              count++;
+              if(strs[1] == self_name)
+              {
+                own_index = count;
+              }
+              agent_setup(count);
+
+              sub_other_pose[count] = nh.subscribe<geometry_msgs::PoseStamped>(info.name,10,boost::bind(&nhttc_ros::PoseCallback,this,_1,count));
+              s.str("");
+              s<<"/";
+              s<<strs[1];
+              s<<"/mux/ackermann_cmd_mux/input/navigation";
+              sub_other_control[count] = nh.subscribe<ackermann_msgs::AckermannDriveStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::ControlCallback,this,_1,count));
+            }
+          }
+        }
+      }
+    }
+  }
+
   /**
    * nhttc ros constructor
    *
@@ -230,6 +278,7 @@ public:
    */
   nhttc_ros(ros::NodeHandle &nh)
   {
+    own_index = -1;
     goal_received = false; // start with the assumption that the car has no goal
     current_wp_index = 0; // set current waypoint index to 0
     max_index = 0; //set max_waypoint index to 0
@@ -271,38 +320,12 @@ public:
      * The following code-block listens to all the published topics and filters out those which end with /car_pose or /mocap_pose.
      * When it finds the corresponding topic, it creates the subscribers/publishers for that agent and increases the count for the number of agents.
      */
-    ros::Rate r(1);
-    for(int i=0;i<5;i++)
-    {
-      r.sleep();
-    }
-    ros::master::getTopics(master_topics);
-
-    for (ros::master::V_TopicInfo::iterator it = master_topics.begin() ; it != master_topics.end(); it++) 
-    {
-      const ros::master::TopicInfo& info = *it;
-      std::vector<std::string> strs;
-      if(info.datatype == "geometry_msgs/PoseStamped")
-      {
-        boost::split(strs, info.name, boost::is_any_of("/"));
-        if(strs[2]=="car_pose" or strs[2]=="mocap_pose")
-        {
-          count++;
-          if(strs[1] == self_name)
-          {
-            own_index = count;
-          }
-          agent_setup(count);
-
-          sub_other_pose[count] = nh.subscribe<geometry_msgs::PoseStamped>(info.name,10,boost::bind(&nhttc_ros::PoseCallback,this,_1,count));
-          s.str("");
-          s<<"/";
-          s<<strs[1];
-          s<<"/mux/ackermann_cmd_mux/input/navigation";
-          sub_other_control[count] = nh.subscribe<ackermann_msgs::AckermannDriveStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::ControlCallback,this,_1,count));
-        }
-      }
-    }
+    // ros::Rate r(1);
+    // for(int i=0;i<5;i++)
+    // {
+    //   check_new_agents(nh);
+    //   r.sleep();
+    // } // We do this once at the beginning in order to find the car belonging to our own nav controller
     // set up all the publishers/subscribers
     sub_wp = nh.subscribe("/"+self_name+"/waypoints",10,&nhttc_ros::WPCallBack,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
@@ -430,16 +453,21 @@ int main(int argc, char** argv)
   ros::NodeHandle nh("~");
   nhttc_ros local_planner(nh);
   ros::Rate r(50);
-  for(int i = 0; i < 50;i++) //wait for 5 seconds: this can be removed for the real world; it corresponds to the time taken by the rest of the stuff to init
-  {
-    ros::spinOnce(); // spin but don't plan anything.
-    r.sleep();
-  }
-  local_planner.setup();
+  bool init = false; //flag for node initialization (indicates if the car's car_pose topic has been found)
+
   while(ros::ok)
   {
-    ros::spinOnce(); //this line wasted 2 hours of my time.
-    local_planner.plan();
+    ros::spinOnce(); 
+    local_planner.check_new_agents(nh);
+    if(local_planner.own_index != -1 and !init) //if car had not been initialized before and has now found the car_pose topic
+    {
+      init = true; // set init to true
+      local_planner.setup(); // set up the agent
+    }
+    if(init) //if init
+    {
+      local_planner.plan();
+    }
     r.sleep();
   }
   return 0;

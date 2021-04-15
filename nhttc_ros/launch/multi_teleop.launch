@@ -29,7 +29,7 @@
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="" />
         </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="xterm -e" output="screen">
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="gdb -ex run --args" output="screen">
             <param name="car_name" value="car1"/>
             <param name="solver_time" value="$(arg SolT)"/>
             <param name="max_ttc" value="$(arg mttc)"/>
@@ -144,7 +144,7 @@
         </node> -->
     <!-- </group> -->
 
-    <!-- <node pkg="nhttc_ros" type="nhttc_pose_init.py" name="initializer"/> -->
+    <node pkg="nhttc_ros" type="nhttc_pose_init.py" name="initializer"/>
     <!-- <node pkg="nhttc_ros" type="nhttc_publisher.py" name="waypointer"/> -->
     <!-- Launch third car, fourth car, etc by following above template -->
 
