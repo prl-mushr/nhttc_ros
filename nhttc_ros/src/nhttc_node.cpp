@@ -320,12 +320,12 @@ public:
      * The following code-block listens to all the published topics and filters out those which end with /car_pose or /mocap_pose.
      * When it finds the corresponding topic, it creates the subscribers/publishers for that agent and increases the count for the number of agents.
      */
-    // ros::Rate r(1);
-    // for(int i=0;i<5;i++)
-    // {
-    //   check_new_agents(nh);
-    //   r.sleep();
-    // } // We do this once at the beginning in order to find the car belonging to our own nav controller
+    ros::Rate r(1);
+    for(int i=0;i<5;i++)
+    {
+      check_new_agents(nh);
+      r.sleep();
+    } // We do this once at the beginning in order to find the car belonging to our own nav controller
     // set up all the publishers/subscribers
     sub_wp = nh.subscribe("/"+self_name+"/waypoints",10,&nhttc_ros::WPCallBack,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
@@ -458,7 +458,7 @@ int main(int argc, char** argv)
   while(ros::ok)
   {
     ros::spinOnce(); 
-    local_planner.check_new_agents(nh);
+    // local_planner.check_new_agents(nh);
     if(local_planner.own_index != -1 and !init) //if car had not been initialized before and has now found the car_pose topic
     {
       init = true; // set init to true

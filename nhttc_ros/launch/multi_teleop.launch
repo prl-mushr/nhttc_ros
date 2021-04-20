@@ -49,7 +49,7 @@
             <arg name="racecar_color" value="-green-black" />
 
         </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="gdb -ex run --args" output="screen">
             <param name="car_name" value="car2"/>
             <param name="solver_time" value="$(arg SolT)"/>
             <param name="max_ttc" value="$(arg mttc)"/>
