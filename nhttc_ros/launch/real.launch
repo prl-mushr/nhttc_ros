@@ -14,6 +14,11 @@
     <arg name="other_car6" default = "car7"/>
     <arg name="other_car7" default = "car8"/>
 
+    <arg name="cgr" default = "1.0"/>
+    <arg name="mttc" default = "3"/>
+    <arg name="SolT" default = "20"/>
+    <arg name="follow_time" default = "true"/>
+
     <!-- Set to 1 if you want to run the map_server -->
     <arg name="map_server" value = "0"/>
 
@@ -25,8 +30,9 @@
 
     <!-- Launch Teleop -->
     <group>
-	<include file="$(find mushr_base)/launch/teleop.launch" />
-        <arg name="car_name" value="$(arg own_name)" />
+	<include file="$(find mushr_base)/launch/teleop.launch">
+	        <arg name="car_name" value="$(arg own_name)" />
+	</include>
     </group>
 
     <!-- Launch Own Controller -->
@@ -44,7 +50,7 @@
 
     <!-- <node pkg="nhttc_ros" type="nhttc_pose_goal_init.py" name="initializer" output="screen">
         <param name="car_count" value="$(arg car_count)"/>
-        <!-- Each arg is a tuple of (car_name,boolean) of whether it is a sim car or not -->
+        Each arg is a tuple of (car_name,boolean) of whether it is a sim car or not
         <param name="car1_name-sim" value="$(arg own_name),0"/>
         <param name="car2_name-sim" value="$(arg other_car1),0"/>
         <param name="car3_name-sim" value="$(arg other_car2),1"/>
