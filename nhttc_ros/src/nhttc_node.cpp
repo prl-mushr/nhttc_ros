@@ -452,7 +452,7 @@ int main(int argc, char** argv)
   ros::init(argc,argv,"nhttc_local_planner");
   ros::NodeHandle nh("~");
   nhttc_ros local_planner(nh);
-  ros::Rate r(50);
+  ros::Rate r(40);
   bool init = false; //flag for node initialization (indicates if the car's car_pose topic has been found)
 
   while(ros::ok)

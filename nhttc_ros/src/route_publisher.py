@@ -46,63 +46,43 @@ def pose_callback(data,args):
 		if(distance < min_dist):
 			min_dist = distance
 
+# first is for default
+# second for cgr comparison
+# third is for max_ttc
+# fourth is for SolT
+# fifth is for time.
+
 def prepare_route(args,tag):
 	# now = rospy.Time.now()
 	global count
 	global polygon
-	R = 3.5
+	R = 2.5
 	fraction = float(tag)/float(count)
 	angle = 2*m.pi*fraction
-	X0 = m.cos(angle)*R
-	Y0 = m.sin(angle)*R
+	X0 = m.cos(angle)*R + R
+	Y0 = m.sin(angle)*R + 0.6*R
 
 	route = PoseArray()
 	route.header.frame_id = "/map"
 	route.header.stamp = rospy.Time.now()
-	if(args.style == "straight"):
-		Xf,Yf = m.cos(angle+m.pi)*R,m.sin(angle+m.pi)*R
-		dX = (Xf - X0)*0.1
-		dY = (Yf - Y0)*0.1
-		print(dX,dY)
-		for i in range(10):
-			p = Pose()
-			p.position.x, p.position.y, p.position.z = X0 + float(i)*dX, Y0 + float(i)*dY, 0.001
-			p.orientation = angle_to_quaternion(m.pi/2)
-			route.poses.append(p)
-
-	if(args.style == "circle"):
-		R = 2.5
-		for i in range(10):
-			fraction = float(i)/10
-			angle = 2*m.pi*fraction
-			p = Pose()
-			if(tag%2):
-				p.position.x, p.position.y, p.position.z = R*m.cos(-m.pi/2 + angle), R*m.sin(- m.pi/2 + angle)+R, 0.001
-			else:
-				p.position.x, p.position.y, p.position.z = R*m.cos(-m.pi/2 -angle), R*m.sin(-m.pi/2 - angle)+R, 0.001
-			p.orientation = angle_to_quaternion(angle)
-			route.poses.append(p)
 
 	if(args.style == "fly-by"):
-		dX = (0 - X0)/7.0
+		dX = 0.5
 		dY = 0.5
 		if(tag == 0):
-			for i in range(14):
+			for i in range(10):
 				p = Pose()
-				if(i<7):
-					p.position.x, p.position.y, p.position.z = X0+dX*i, Y0+0, 0.001
+				if(i<=5):
+					p.position.x, p.position.y, p.position.z = X0-dX*i, Y0+0, 0.001
 				else:
-					p.position.x, p.position.y, p.position.z = 0, Y0+dY*(i-7), 0.001
+					p.position.x, p.position.y, p.position.z = X0-dX*5, Y0+dY*(i-5), 0.001
 				p.orientation = angle_to_quaternion(m.pi/2)
 				polygon.append([p.position.x,p.position.y])
 				route.poses.append(p)
 		else:
-			for i in range(10):
+			for i in range(7):
 				p = Pose()
-				if(i==5):
-					p.position.x, p.position.y, p.position.z = X0+dX*i, Y0+0, 0.003
-				else:
-					p.position.x, p.position.y, p.position.z = X0+dX*i, Y0+0, 0.001
+				p.position.x, p.position.y, p.position.z = X0+dX*i, Y0+0, 0.001
 				p.orientation = angle_to_quaternion(m.pi/2)
 				route.poses.append(p)
 	if(args.style == "halt"):
@@ -143,43 +123,42 @@ if __name__ == '__main__':
 		pub.append(publisher)
 	time.sleep(1)
 	print("Route Publisher Running",count)
+	count = 2
 	for i in range(count):
 		pub[i].publish(prepare_route(args,i))
-	start_time = time.time()
-	dist = 10
-	while(dist>0.5):
-		try:
-			cur_pos = actual[-1]
-			final_pos = polygon[-1]
-			dist = m.sqrt((cur_pos[0]-final_pos[0])**2 + (cur_pos[1]-final_pos[1])**2)
-		except:
-			print("something bwoke uwu",len(polygon))
-	end_time = time.time()
+	# start_time = time.time()
+	# dist = 10
+	# while(dist>0.5):
+	# 	try:
+	# 		cur_pos = actual[-1]
+	# 		final_pos = polygon[-1]
+	# 		dist = m.sqrt((cur_pos[0]-final_pos[0])**2 + (cur_pos[1]-final_pos[1])**2)
+	# 	except:
+	# 		print("something bwoke uwu",len(polygon))
+	# end_time = time.time()
+	# exp_dist = float(len(polygon))*0.5
+	# exp_time = exp_dist/0.4 # 0.3 m/s max speed
+	# act_time = end_time - start_time
+	# time_ratio = act_time/exp_time
 
+	# act_dist = 0.5 # prepend by 0.5 to account for the 0.5 m cutoff.
+	# prev_xy = None
+	# polygon.reverse()
+	# last_point = polygon[0]
 
-	exp_dist = float(len(polygon))*0.5
-	exp_time = exp_dist/0.4 # 0.3 m/s max speed
-	act_time = end_time - start_time
-	time_ratio = act_time/exp_time
-
-	act_dist = 0.5 # prepend by 0.5 to account for the 0.5 m cutoff.
-	prev_xy = None
-	polygon.reverse()
-	last_point = polygon[0]
-
-	for xy in actual:
-		polygon.append([xy[0],xy[1]])
-		if(prev_xy is not None):
-			act_dist += m.sqrt((xy[0] - prev_xy[0])**2 + (xy[1] - prev_xy[1])**2)
-		prev_xy = xy
-	print(act_dist,exp_dist)
-	path_ratio = act_dist/exp_dist
-	polygon.append([last_point[0],last_point[1]])
-	area = Polygon(polygon).area
-	average_cte = area/exp_dist
-	polygon = np.array(polygon)
-	disp_act = np.array(actual)
-	# plt.plot(polygon[:,0],polygon[:,1])
-	# plt.plot(disp_act[:,0],disp_act[:,1],color='r')
-	# plt.show()
-	print("path_ratio: {} | time_ratio: {} | average_cte: {} | minimum_dist: {}".format( round(1/path_ratio,3), round(1/time_ratio,3), round(average_cte,3), round(min_dist,3) ) )
+	# for xy in actual:
+	# 	polygon.append([xy[0],xy[1]])
+	# 	if(prev_xy is not None):
+	# 		act_dist += m.sqrt((xy[0] - prev_xy[0])**2 + (xy[1] - prev_xy[1])**2)
+	# 	prev_xy = xy
+	# print(act_dist,exp_dist)
+	# path_ratio = act_dist/exp_dist
+	# polygon.append([last_point[0],last_point[1]])
+	# area = Polygon(polygon).area
+	# average_cte = area/exp_dist
+	# polygon = np.array(polygon)
+	# disp_act = np.array(actual)
+	# # plt.plot(polygon[:,0],polygon[:,1])
+	# # plt.plot(disp_act[:,0],disp_act[:,1],color='r')
+	# # plt.show()
+	# print("path_ratio: {} | time_ratio: {} | average_cte: {} | minimum_dist: {}".format( round(1/path_ratio,3), round(1/time_ratio,3), round(average_cte,3), round(min_dist,3) ) )
