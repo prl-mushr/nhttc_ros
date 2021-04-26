@@ -40,17 +40,23 @@ roslaunch nhttc_ros multi_teleop.launch
 ## API
 The nhttc_ros wrapper has the following parameters:
 
-### car_name (string): name assigned to the car (can be any string but prefer car{index number})
+### car_name (string):
+name assigned to the car (can be any string but prefer car{index number})
 
-### solver_time (int): maximum time in milliseconds for which the solver is allowed to run
+### solver_time (int): 
+maximum time in milliseconds for which the solver is allowed to run
 
-### max_ttc (float): maximum time-to-collision used by the solver: any agents that have a time to collision larger than this will not be considered in the cost function
+### max_ttc (float):
+maximum time-to-collision used by the solver: any agents that have a time to collision larger than this will not be considered in the cost function
 
-### carrot_goal_ratio (float): ratio of the carrot-goal/lookahead distance to the turning radius. value of 1 means that the lookahead distance is the same as the turning radius.
+### carrot_goal_ratio (float):
+ratio of the carrot-goal/lookahead distance to the turning radius. value of 1 means that the lookahead distance is the same as the turning radius.
 
-### obey_time" value(boolean): set to true if the car is supposed to adhere to the time coordinate of the waypoints (as in, to arrive at a waypoint at a given time and not before/after).
+### obey_time" value(boolean):
+set to true if the car is supposed to adhere to the time coordinate of the waypoints (as in, to arrive at a waypoint at a given time and not before/after).
 
-### allow_reverse (boolean): set to true if the car is allowed to go in reverse.
+### allow_reverse (boolean):
+set to true if the car is allowed to go in reverse.
 
 
 ### Publishers
