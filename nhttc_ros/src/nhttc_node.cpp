@@ -224,6 +224,13 @@ public:
     time_pub.publish(output_msg);
   }
 
+  /**
+   * Check for new agents
+   *
+   * updates the agent array by finding published topics with topic type PoseStamped and unique car_name.
+   * @params: ros::NodeHandle
+   * @returns: None
+   */
   void check_new_agents(ros::NodeHandle &nh)
   {
     ros::master::getTopics(master_topics);
