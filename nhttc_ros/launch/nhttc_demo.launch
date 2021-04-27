@@ -36,8 +36,6 @@
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
             <param name="obey_time" value = "$(arg follow_time)" />
             <param name="allow_reverse" value = "$(arg reverse)" />
-            <param name="allow_reverse" value = "$(arg reverse)" />
-            <param name="max_agents" value="4"/>
         </node>
     </group>
 
@@ -56,7 +54,6 @@
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
             <param name="obey_time" value = "$(arg follow_time)" />
             <param name="allow_reverse" value = "$(arg reverse)" />
-            <param name="max_agents" value="4"/>
         </node>
     </group>
 
@@ -74,7 +71,6 @@
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
             <param name="obey_time" value = "$(arg follow_time)" />
             <param name="allow_reverse" value = "$(arg reverse)" />
-            <param name="max_agents" value="4"/>
         </node>
     </group>
 
@@ -92,7 +88,6 @@
             <param name="carrot_goal_ratio" value="$(arg cgr)"/>
             <param name="obey_time" value = "$(arg follow_time)" />
             <param name="allow_reverse" value = "$(arg reverse)" />
-            <param name="max_agents" value="4"/>
         </node>
     </group> -->
 
