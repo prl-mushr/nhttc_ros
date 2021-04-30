@@ -126,6 +126,7 @@ if __name__ == '__main__':
 	count = 2
 	for i in range(count):
 		pub[i].publish(prepare_route(args,i))
+	## uncomment the following lines for experiment data collection.
 	# start_time = time.time()
 	# dist = 10
 	# while(dist>0.5):
