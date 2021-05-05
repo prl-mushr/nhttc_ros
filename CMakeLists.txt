@@ -110,9 +110,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS 
-  NHTTC/src/sgd
-  NHTTC/src/nhttc_interface
-  NHTTC/src/nhttc_opengl
+  src/NHTTC/src/sgd
+  src/NHTTC/src/nhttc_interface
+  src/NHTTC/src/nhttc_opengl
  CATKIN_DEPENDS 
 	roscpp 
 	rospy 
@@ -133,13 +133,13 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
-  NHTTC/src/nhttc_interface
-  NHTTC/src
+  src/NHTTC/src/nhttc_interface
+  src/NHTTC/src
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   NHTTC/src/nhttc_interface
+#   src/NHTTC/src/nhttc_interface
 # )
 
 ## Add cmake target dependencies of the library
@@ -162,11 +162,11 @@ add_executable(${PROJECT_NAME}_node src/nhttc_node.cpp)
 ## same as for the library above
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-add_library(nhttc_interface NHTTC/src/nhttc_interface/nhttc_interface.cpp)
-add_library(ttc_sgd_problem_models NHTTC/src/sgd/ttc_sgd_problem_models.cpp)
-add_library(ttc_sgd_problem NHTTC/src/sgd/ttc_sgd_problem.cpp)
-add_library(ttc_obstacles NHTTC/src/sgd/ttc_obstacles.cpp)
-add_library(sgd NHTTC/src/sgd/sgd.cpp)
+add_library(nhttc_interface src/NHTTC/src/nhttc_interface/nhttc_interface.cpp)
+add_library(ttc_sgd_problem_models src/NHTTC/src/sgd/ttc_sgd_problem_models.cpp)
+add_library(ttc_sgd_problem src/NHTTC/src/sgd/ttc_sgd_problem.cpp)
+add_library(ttc_obstacles src/NHTTC/src/sgd/ttc_obstacles.cpp)
+add_library(sgd src/NHTTC/src/sgd/sgd.cpp)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
