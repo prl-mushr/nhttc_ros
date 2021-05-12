@@ -5,40 +5,40 @@ mushr_nhttc_ros is a multi-agent decentralized navigation system meant to take i
 ## Installation:
 (Assuming catkin_ws exists)
 cloning the repo files:
-{{< highlight bash >}}
+``` bash
 $ cd catkin_ws/src
 $ git clone --branch devel https://github.com/naughtyStark/nhttc_ros.git
 $ cd nhttc_ros
 $ git submodule init
 $ git submodule update --force --recursive --init --remote
-{{< / highlight >}}
+```
 
 Install python requirements (assuming you are already in the nhttc_ros directory):
-{{< highlight bash >}}
+``` bash
 $ pip install -r requirements.txt
-{{< / highlight >}}
+```
 
 ## Compile:
 Compile using catkin_make:
-{{< highlight bash >}}
+``` bash
 $ cd ~/catkin_ws
 $ catkin_make
-{{< / highlight >}}
+```
 
 ## Running:
 If everything compiles, you should be ready to try out the simulation example. Launch the nhttc_demo.launch:
-{{< highlight bash >}}
+``` bash
 $ roslaunch nhttc_ros nhttc_demo.launch
-{{< / highlight >}}
+```
 
 In a new tab, open rviz:
-{{< highlight bash >}}
+``` bash
 $ rviz -d ~/catkin_ws/src/nhttc_ros/nhttc_ros/rviz/nhttc.rviz
-{{< / highlight >}}
+```
 
-{{< highlight bash >}}
+``` bash
 $ rosrun nhttc_ros route_publisher.py
-{{< / highlight >}}
+```
 
 ## API
 
