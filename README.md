@@ -1,43 +1,46 @@
 # nhttc_ros
+
+mushr_nhttc_ros is a multi-agent decentralized navigation system meant to take in waypoints in space _and_ time from a higher level planner and follow them while avoiding collisions with other agents. Below are install and run instructions, but the best way to get started is to checkout [this](google.com) tutorial. Detailed run instructions should be in a tutorial, this serves as a quick reference
+
+## Installation:
 (Assuming catkin_ws exists)
 cloning the repo files:
-```
-cd catkin_ws/src
-git clone --branch devel https://github.com/naughtyStark/nhttc_ros.git
-cd nhttc_ros
-git submodule init
-git submodule update --force --recursive --init --remote
-```
-rviz setup:
-start roscore
-```
-roscore
-```
-open rviz 
-```
-rosrun rviz rviz
-```
-on the top left, click on File->open. Then navigate to nhttc_ros/nhttc_ros/rviz and select nhttc.rviz 
-press Ctrl+S before exiting
+{{< highlight bash >}}
+$ cd catkin_ws/src
+$ git clone --branch devel https://github.com/naughtyStark/nhttc_ros.git
+$ cd nhttc_ros
+$ git submodule init
+$ git submodule update --force --recursive --init --remote
+{{< / highlight >}}
 
-Compilation:
-```
-cd catkin_ws
-catkin_make
-```
-Making all python nodes executable:
-```
-chmod 755 [filename].py
-```
-Specifically, 
-```
-chmod 755 nhttc_ros/nhttc_ros/src/nhttc_pose_init.py
-```
-Running:
-```
-roslaunch nhttc_ros multi_teleop.launch
-```
-# API
+Install python requirements (assuming you are already in the nhttc_ros directory):
+{{< highlight bash >}}
+$ pip install -r requirements.txt
+{{< / highlight >}}
+
+## Compile:
+Compile using catkin_make:
+{{< highlight bash >}}
+$ cd ~/catkin_ws
+$ catkin_make
+{{< / highlight >}}
+
+## Running:
+If everything compiles, you should be ready to try out the simulation example. Launch the nhttc_demo.launch:
+{{< highlight bash >}}
+$ roslaunch nhttc_ros nhttc_demo.launch
+{{< / highlight >}}
+
+In a new tab, open rviz:
+{{< highlight bash >}}
+$ rviz -d ~/catkin_ws/src/nhttc_ros/nhttc_ros/rviz/nhttc.rviz
+{{< / highlight >}}
+
+{{< highlight bash >}}
+$ rosrun nhttc_ros route_publisher.py
+{{< / highlight >}}
+
+## API
 
 The nhttc_ros wrapper has the following parameters:
 #### car_name (string):
