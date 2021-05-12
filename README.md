@@ -6,6 +6,7 @@ mushr_nhttc_ros is a multi-agent decentralized navigation system meant to take i
 [Stefan Layanto](https://stefanlayanto.wordpress.com/)
 
 [Sidharth Talia](https://www.sidharthtalia.com)
+
 (Order not indicative of contribution)
 
 ## Installation:
