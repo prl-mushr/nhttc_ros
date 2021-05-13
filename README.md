@@ -3,7 +3,7 @@
 mushr_nhttc_ros is a multi-agent decentralized navigation system meant to take in waypoints in space _and_ time from a higher level planner and follow them while avoiding collisions with other agents. Below are install and run instructions, but the best way to get started is to checkout [this](google.com) tutorial. Detailed run instructions should be in a tutorial, this serves as a quick reference
 
 ### Authors: 
-[Stefan Layanto](https://stefanlayanto.wordpress.com/)
+[Stefan Layanto](https://www.linkedin.com/in/stefanlayanto)
 
 [Sidharth Talia](https://www.sidharthtalia.com)
 
