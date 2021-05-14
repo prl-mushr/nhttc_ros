@@ -13,6 +13,10 @@ please ensure that you have xterm installed! (used for debugging).
 ```
 sudo apt install xterm
 ```
+you will also need to install ros geometry msgs
+```
+sudo apt-get install ros-[ROS VERSION HERE]-tf2-geometry-msgs
+```
 rviz setup:
 start roscore
 ```
