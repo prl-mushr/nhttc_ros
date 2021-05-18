@@ -67,15 +67,15 @@ def prepare_route(args,tag):
 	route.header.stamp = rospy.Time.now()
 
 	if(args.style == "fly-by"):
-		dX = 0.25
-		dY = 0.25
+		dX = 0.5
+		dY = 0.5
 		if(tag == 0):
-			for i in range(20):
+			for i in range(10):
 				p = Pose()
-				if(i<=10):
+				if(i<=5):
 					p.position.x, p.position.y, p.position.z = X0-dX*i, Y0+0, 0.001
 				else:
-					p.position.x, p.position.y, p.position.z = X0-dX*10, Y0+dY*(i-10), 0.001
+					p.position.x, p.position.y, p.position.z = X0-dX*5, Y0+dY*(i-5), 0.001
 				p.orientation = angle_to_quaternion(m.pi/2)
 				polygon.append([p.position.x,p.position.y])
 				route.poses.append(p)
@@ -103,14 +103,6 @@ def prepare_route(args,tag):
 				p.position.x, p.position.y, p.position.z = X0+dX*i, Y0+0, 0.001
 				p.orientation = angle_to_quaternion(m.pi/2)
 				route.poses.append(p)
-	if(args.style == "proving a point"):
-		dX = 0
-		dY = 0.5
-		for i in range(7):
-			p = Pose()
-			p.position.x, p.position.y, p.position.z = X0, Y0 + dY*i, 0.001
-			p.orientation = angle_to_quaternion(m.pi/2)
-			route.poses.append(p)
 
 	return route
 
@@ -120,7 +112,7 @@ def angle_to_quaternion(angle):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='mushr')
-	parser.add_argument('--style', type=str, default="proving a point", help="path style")
+	parser.add_argument('--style', type=str, default="fly-by", help="path style")
 	args = parser.parse_args()
 	sub = []
 	pub = []
