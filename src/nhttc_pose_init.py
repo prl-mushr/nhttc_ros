@@ -50,8 +50,8 @@ cur_pose.header.stamp = now
 # sets the cars on the circumference of a circle with radius = R.
 # The positions are equi-distant (3 cars at 120 degrees, 4 at 90 and so on)
 R = 2.5
-if(count == 1):  # just one agent fellas.
-    R = 0
+# if(count == 1):  # just one agent fellas.
+#     R = 0
 # print(count)
 for i in range(count):
     fraction = float(i) / float(count)

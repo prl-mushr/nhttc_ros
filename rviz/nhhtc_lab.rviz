@@ -9,15 +9,6 @@ Panels:
         - /Map1/Orientation1
         - /RobotModel1
         - /RobotModel2
-        - /RobotModel3
-        - /Car1 Waypoints1
-        - /Car2 Waypoints1
-        - /Car3 Waypoints1
-        - /Car4 Waypoints1
-        - /Car1 Markers1
-        - /Car2 Markers1
-        - /Car3 Markers1
-        - /Pose1
       Splitter Ratio: 0.5
     Tree Height: 775
   - Class: rviz/Selection
@@ -82,65 +73,6 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        back_left/wheel_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        back_right/wheel_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        base_footprint:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        camera_bottom_screw_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        camera_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        front_left/wheel_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        front_left/wheel_steer_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        front_right/wheel_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        front_right/wheel_steer_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        insets_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        laser_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        platform_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
       Name: RobotModel
       Robot Description: car1/robot_description
       TF Prefix: car1
@@ -245,7 +177,7 @@ Visualization Manager:
       Shaft Length: 0.230000004
       Shaft Radius: 0.00999999978
       Shape: Arrow (Flat)
-      Topic: /car1/waypoints
+      Topic: /car30/waypoints
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -261,7 +193,7 @@ Visualization Manager:
       Shaft Length: 0.230000004
       Shaft Radius: 0.00999999978
       Shape: Arrow (Flat)
-      Topic: /car2/waypoints
+      Topic: /car38/waypoints
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -333,7 +265,7 @@ Visualization Manager:
       Marker Topic: /mushr_coordination/border
       Name: Border Marker
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -349,6 +281,36 @@ Visualization Manager:
       Shaft Radius: 0.0500000007
       Shape: Arrow
       Topic: /car1/cur_goal
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.100000001
+      Class: rviz/Pose
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.300000012
+      Head Radius: 0.100000001
+      Name: Pose
+      Shaft Length: 1
+      Shaft Radius: 0.0500000007
+      Shape: Arrow
+      Topic: /car30/car_pose
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.100000001
+      Class: rviz/Pose
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.300000012
+      Head Radius: 0.100000001
+      Name: Pose
+      Shaft Length: 1
+      Shaft Radius: 0.0500000007
+      Shape: Arrow
+      Topic: /car38/car_pose
       Unreliable: false
       Value: true
   Enabled: true
@@ -376,15 +338,15 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 12.4832811
+      Distance: 16.2538185
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 5.01012325
-        Y: 1.77108717
+        X: 2.56101561
+        Y: 1.04160953
         Z: -2.46506625e-06
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
@@ -394,7 +356,7 @@ Visualization Manager:
       Pitch: 1.56979632
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 4.71040773
+      Yaw: 4.71540928
     Saved:
       - Angle: 0
         Class: rviz/TopDownOrtho
