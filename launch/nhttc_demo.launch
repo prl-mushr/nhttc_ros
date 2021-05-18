@@ -42,7 +42,7 @@
     </group>
 
     <!-- Launch second car -->
-<!--     <group ns="$(arg car2_name)">
+    <group ns="$(arg car2_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
             <arg name="car_name" value="$(arg car2_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
@@ -58,7 +58,7 @@
             <param name="allow_reverse" value = "$(arg reverse)" />
             <param name="adaptive_lookahead" value = "$(arg adapt_LA)" />
         </node>
-    </group> -->
+    </group>
 
 <!--     <group ns="$(arg car3_name)">
         <include file="$(find mushr_sim)/launch/single_car.launch" >
