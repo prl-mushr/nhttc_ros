@@ -12,9 +12,9 @@
     <arg name="cgr" default = "1.0"/>
     <arg name="mttc" default = "6.0"/>
     <arg name="SolT" default = "20"/>
-    <arg name="follow_time" default = "false" />
+    <arg name="follow_time" default = "true" />
     <arg name="reverse" default = "false"/>
-    <arg name="adapt_LA" default = "true" /> <!-- experimental -->
+    <arg name="adapt_LA" default = "false" /> <!-- experimental -->
     <!-- Set to 1 if you want to run the map_server --> --> -->
     <arg name="map_server" value = "1"/>
 
