@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import rospy
 import tf
 import tf.transformations
@@ -14,22 +13,36 @@ count = 0
 
 
 def angle_to_quaternion(angle):
-    """Convert an angle in radians into a quaternion _message_."""
+    """
+    Convert an angle in radians into a quaternion _message_.
+
+    Params:
+        angle in radians
+    Returns:
+        quaternion (unit quaternion)
+    """
     return Quaternion(*tf.transformations.quaternion_from_euler(0, 0, angle))
 
 
 def pose_callback(data, args):
+    """
+    function for counting the number of cars.
+
+    Params:
+        data: car pose
+        args: tag/index of the car (0,1,...)
+    Returns:
+        None
+    """
     global count
     if(count < args):
         count = args
 
 
-# list of publishers and subscribers
 pub = []
 goal_pub = []
 sub = []
-# this is basically initializing all the subscribers for counting
-# the number of cars and publishers for initiailizing pose and goal points.
+
 for i in range(8):
     subscriber = rospy.Subscriber("/car" + str(i + 1) + "/car_pose", PoseStamped, pose_callback, (i + 1))
     publisher = rospy.Publisher("/car" + str(i + 1) + "/initialpose", PoseWithCovarianceStamped, queue_size=1)
@@ -38,21 +51,15 @@ for i in range(8):
     pub.append(publisher)
     goal_pub.append(goal_publisher)
 
-
 time.sleep(3)  # give some time for the code to initialize.
 
-# initial pose setting -> not required in real; comment if not required.
 now = rospy.Time.now()
 cur_pose = PoseWithCovarianceStamped()
 cur_pose.header.frame_id = "/map"
 cur_pose.header.stamp = now
 
-# sets the cars on the circumference of a circle with radius = R.
-# The positions are equi-distant (3 cars at 120 degrees, 4 at 90 and so on)
 R = 2.5
-# if(count == 1):  # just one agent fellas.
-#     R = 0
-# print(count)
+
 for i in range(count):
     fraction = float(i) / float(count)
     angle = 2 * m.pi * fraction
