@@ -9,12 +9,11 @@
     <arg name="car7_name" default="car7" />
     <arg name="car8_name" default="car8" />
 
-    <arg name="cgr" default = "1.0"/>
-    <arg name="mttc" default = "3"/>
-    <arg name="SolT" default = "20"/>
-    <arg name="follow_time" default = "true" />
-    <arg name="reverse" default = "false"/>
-    <!-- Set to 1 if you want to run the map_server --> --> -->
+    <arg name="nhttc_multi_config" default="$(find nhttc_ros)/config/nhttc_multi.yaml" />
+
+    <rosparam file="$(arg nhttc_multi_config)" command="load" />
+
+    <!-- Set to 1 if you want to run the map_server -->
     <arg name="map_server" value = "1"/>
 
     <!-- Launch  map server-->
@@ -31,11 +30,6 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="gdb -ex run --args" output="screen">
             <param name="car_name" value="car1"/>
-            <param name="solver_time" value="$(arg SolT)"/>
-            <param name="max_ttc" value="$(arg mttc)"/>
-            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
-            <param name="obey_time" value = "$(arg follow_time)" />
-            <param name="allow_reverse" value = "$(arg reverse)" />
         </node>
     </group>
 
@@ -49,11 +43,6 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
             <param name="car_name" value="car2"/>
-            <param name="solver_time" value="$(arg SolT)"/>
-            <param name="max_ttc" value="$(arg mttc)"/>
-            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
-            <param name="obey_time" value = "$(arg follow_time)" />
-            <param name="allow_reverse" value = "$(arg reverse)" />
         </node>
     </group>
 
@@ -66,11 +55,6 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller3">
             <param name="car_name" value="car3"/>
-            <param name="solver_time" value="$(arg SolT)"/>
-            <param name="max_ttc" value="$(arg mttc)"/>
-            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
-            <param name="obey_time" value = "$(arg follow_time)" />
-            <param name="allow_reverse" value = "$(arg reverse)" />
         </node>
     </group>
 
@@ -83,64 +67,9 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller4">
             <param name="car_name" value="car4"/>
-            <param name="solver_time" value="$(arg SolT)"/>
-            <param name="max_ttc" value="$(arg mttc)"/>
-            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
-            <param name="obey_time" value = "$(arg follow_time)" />
-            <param name="allow_reverse" value = "$(arg reverse)" />
         </node>
     </group>
 
-<!--     <group ns="$(arg car5_name)">
-        <include file="$(find mushr_sim)/launch/single_car.launch" >
-            <arg name="car_name" value="$(arg car5_name)"/>
-            <arg name="racecar_version" value="racecar-uw-nano"/>
-            <arg name="racecar_color" value="-green-black" />
-
-        </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller5">
-            <param name="car_name" value="car5"/>
-        </node>
-    </group>
-
-    <group ns="$(arg car6_name)">
-        <include file="$(find mushr_sim)/launch/single_car.launch" >
-            <arg name="car_name" value="$(arg car6_name)"/>
-            <arg name="racecar_version" value="racecar-uw-nano"/>
-            <arg name="racecar_color" value="-green-black" />
-
-        </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller6">
-            <param name="car_name" value="car6"/>
-        </node>
-    </group>
-
-    <group ns="$(arg car7_name)">
-        <include file="$(find mushr_sim)/launch/single_car.launch" >
-            <arg name="car_name" value="$(arg car7_name)"/>
-            <arg name="racecar_version" value="racecar-uw-nano"/>
-            <arg name="racecar_color" value="-green-black" />
-
-        </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller7">
-            <param name="car_name" value="car7"/>
-        </node>
-    </group>
-
-    <group ns="$(arg car8_name)">
-        <include file="$(find mushr_sim)/launch/single_car.launch" >
-            <arg name="car_name" value="$(arg car8_name)"/>
-            <arg name="racecar_version" value="racecar-uw-nano"/>
-            <arg name="racecar_color" value="-green-black" />
-
-        </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller8">
-            <param name="car_name" value="car8"/>
-        </node> -->
-    <!-- </group> -->
-
-    <node pkg="nhttc_ros" type="nhttc_pose_init.py" name="initializer"/>
-    <!-- <node pkg="nhttc_ros" type="nhttc_publisher.py" name="waypointer"/> -->
-    <!-- Launch third car, fourth car, etc by following above template -->
+    <node pkg="nhttc_ros" type="nhttc_pose_init" name="initializer"/>
 
 </launch>

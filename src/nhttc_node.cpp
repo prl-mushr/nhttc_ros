@@ -292,7 +292,7 @@ public:
     max_index = 0; //set max_waypoint index to 0
     // get all the params
     nh.getParam("car_name",self_name);
-    if(not nh.getParam("solver_time",solver_time))
+    if(not nh.getParam("/solver_time",solver_time))
     {
       solver_time = 10; // 10 ms solver time for each agent.
     }
@@ -304,23 +304,23 @@ public:
     {
       num_agents_max = 8; // default maximum number of agents
     }
-    if(not nh.getParam("carrot_goal_ratio",carrot_goal_ratio))
+    if(not nh.getParam("/carrot_goal_ratio",carrot_goal_ratio))
     {
       carrot_goal_ratio = 1.0f; //default distance to the ever-changing goal
     }
-    if(not nh.getParam("max_ttc",max_ttc))
+    if(not nh.getParam("/max_ttc",max_ttc))
     {
       max_ttc = 6.0f; // default ttc 
     }
-    if(not nh.getParam("obey_time", obey_time))
+    if(not nh.getParam("/obey_time", obey_time))
     {
       obey_time = false;// false by default
     }
-    if(not nh.getParam("allow_reverse", allow_reverse))
+    if(not nh.getParam("/allow_reverse", allow_reverse))
     {
       allow_reverse = true;// true by default (default behavior is to not have any constraints on the nav engine)
     }
-    if(not nh.getParam("adaptive_lookahead",adaptive_lookahead))
+    if(not nh.getParam("/adaptive_lookahead",adaptive_lookahead))
     {
       adaptive_lookahead = false;
     }
@@ -362,12 +362,14 @@ public:
     agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
     agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim,steer_limit);
     agents[own_index].prob->params.max_ttc = max_ttc;
-    ROS_INFO("max_ttc: %f, carrot_goal_ratio: %f",max_ttc, carrot_goal_ratio);
     turning_radius = wheelbase/tanf(fabs(steer_limit));
     fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = carrot_goal_ratio*turning_radius; 
     cutoff_dist += agents[own_index].prob->params.radius;
-    ROS_INFO("carrot_goal_dist: %f",cutoff_dist);
-    ROS_INFO("obey_time:%d",int(obey_time));
+    ROS_INFO("carrot_goal_ratio: %f",carrot_goal_ratio);
+    ROS_INFO("max_ttc: %f", max_ttc);
+    ROS_INFO("solver_time: %d", solver_time);
+    ROS_INFO("obey_time:%d", int(obey_time));
+    ROS_INFO("allow_reverse: %d", int(allow_reverse));
     ROS_INFO("adaptive_lookahead, %d", int(adaptive_lookahead));
   }
 
