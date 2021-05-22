@@ -2,17 +2,10 @@
     <!-- <node type="rviz" name="rviz" pkg="rviz" args="-d $(find package_name)/rviz/multi_teleop.rviz" /> -->
     <arg name="car1_name" default="car1" />
     <arg name="car2_name" default="car2" />
-    <arg name="car3_name" default="car3" />
-    <arg name="car4_name" default="car4" />
-    <arg name="car5_name" default="car5" />
-    <arg name="car6_name" default="car6" />
-    <arg name="car7_name" default="car7" />
-    <arg name="car8_name" default="car8" />
 
     <arg name="nhttc_demo_config" default="$(find nhttc_ros)/config/nhttc_demo.yaml" />
 
     <rosparam file="$(arg nhttc_demo_config)" command="load" />
-
 
     <!-- Set to 1 if you want to run the map_server -->
     <arg name="map_server" value = "1"/>
@@ -40,7 +33,6 @@
             <arg name="car_name" value="$(arg car2_name)"/>
             <arg name="racecar_version" value="racecar-uw-nano"/>
             <arg name="racecar_color" value="-green-black" />
-
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
             <param name="car_name" value="car2"/>

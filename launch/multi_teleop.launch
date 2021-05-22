@@ -4,10 +4,6 @@
     <arg name="car2_name" default="car2" />
     <arg name="car3_name" default="car3" />
     <arg name="car4_name" default="car4" />
-    <arg name="car5_name" default="car5" />
-    <arg name="car6_name" default="car6" />
-    <arg name="car7_name" default="car7" />
-    <arg name="car8_name" default="car8" />
 
     <arg name="nhttc_multi_config" default="$(find nhttc_ros)/config/nhttc_multi.yaml" />
 

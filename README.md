@@ -1,6 +1,6 @@
 # nhttc_ros
 
-mushr_nhttc_ros is a multi-agent decentralized navigation system meant to take in waypoints in space _and_ time from a higher level planner and follow them while avoiding collisions with other agents. Below are install and run instructions, but the best way to get started is to checkout [this](google.com) tutorial. Detailed run instructions should be in a tutorial, this serves as a quick reference
+mushr_nhttc_ros is a multi-agent decentralized navigation system meant to take in waypoints in space _and_ time from a higher level planner and follow them while avoiding collisions with other agents. It is built on top of the [NHTTC system](https://github.com/davisbo/NHTTC). Below are install and run instructions, but the best way to get started is to checkout [this](google.com) tutorial. Detailed run instructions should be in a tutorial, this serves as a quick reference.
 
 ### Authors: 
 [Stefan Layanto](https://www.linkedin.com/in/stefanlayanto)
@@ -17,11 +17,12 @@ $ cd catkin_ws/src
 $ git clone --branch devel https://github.com/naughtyStark/nhttc_ros.git
 $ cd nhttc_ros
 $ git submodule init
-$ git submodule update --force --recursive --init --remote
+$ git submodule update --recursive
 ```
 
 Install python requirements (assuming you are already in the nhttc_ros directory):
 ``` bash
+$ cd ~/catkin_ws/src/nhttc_ros
 $ pip install -r requirements.txt
 ```
 
