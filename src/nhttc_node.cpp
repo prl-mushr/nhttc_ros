@@ -45,6 +45,7 @@ public:
   int count;
   float speed_lim = 0.4f;
   float cur_time_stamp;
+  float safety_radius;
   int time_index;
   bool obey_time;
   bool allow_reverse;
@@ -324,6 +325,10 @@ public:
     {
       adaptive_lookahead = false;
     }
+    if(not nh.getParam("/safety_radius", safety_radius))
+    {
+      safety_radius = 0.1f;
+    }
 
     ConstructGlobalParams(&global_params);
     count = -1; //number of agents. start from -1.
@@ -357,6 +362,7 @@ public:
   {
     steer_limit = 0.1*M_PI; // max steering angle ~18 degrees. :(. I wanted to drift with the MuSHR car. 
     wheelbase = agents[own_index].prob->params.wheelbase;
+    agents[own_index].prob->params.safety_radius = safety_radius;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.vel_limit = speed_lim;
     agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
@@ -370,6 +376,7 @@ public:
     ROS_INFO("solver_time: %d", solver_time);
     ROS_INFO("obey_time:%d", int(obey_time));
     ROS_INFO("allow_reverse: %d", int(allow_reverse));
+    ROS_INFO("safety_radius: %f", safety_radius);
     ROS_INFO("adaptive_lookahead, %d", int(adaptive_lookahead));
   }
 
