@@ -2,6 +2,6 @@ carrot_goal_ratio: 1.0
 max_ttc: 6.0
 solver_time: 20
 obey_time: true
-allow_reverse: false
+allow_reverse: true
 safety_radius: 0.1
 adaptive_lookahead: false
