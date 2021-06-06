@@ -41,12 +41,12 @@ $ roslaunch nhttc_ros nhttc_demo.launch
 
 In a new tab, open rviz (wait for 10-15 seconds if this is the first time you're launching nhttc_demo.launch):
 ``` bash
-$ rviz -d ~/catkin_ws/src/nhttc_ros/nhttc_ros/rviz/nhttc.rviz
+$ rviz -d ~/catkin_ws/src/nhttc_ros/rviz/nhttc.rviz
 ```
 
 Run the route publisher node to publish some waypoints for the cars to follow.
 ``` bash
-$ rosrun nhttc_ros route_publisher.py
+$ rosrun nhttc_ros route_publisher
 ```
 
 ## API
