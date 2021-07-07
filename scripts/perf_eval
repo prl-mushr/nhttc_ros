@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+import rospy
+from geometry_msgs.msg import PoseStamped
+import math as m
+import time
+import numpy as np
+from shapely.geometry import Polygon
+import matplotlib.pyplot as plt
+import traceback
+start_time = time.time()
+dist = 10
+
+rospy.init_node("perf_evaluator")
+count = 2  # number of cars in sim/real
+
+path_sim_1 = []
+path_sim_2 = []
+path_real_1 = []
+path_real_2 = []
+
+def pose_callback(data, args):
+    """
+    function for recording the pose. The function also does some stuff to ease data collection
+
+    Params:
+        data: car pose
+        args: the tag of the car (0, 1, ...)
+    Returns:
+        None.
+    """
+    global count
+    if(args == 1):
+        x = data.pose.position.x
+        y = data.pose.position.y
+        path_sim_1.append([x,y])
+    elif(args == 2):
+        x = data.pose.position.x
+        y = data.pose.position.y
+        path_sim_2.append([x,y])
+    if(args == 3):
+        x = data.pose.position.x
+        y = data.pose.position.y
+        path_real_1.append([x,y])
+    elif(args == 4):
+        x = data.pose.position.x
+        y = data.pose.position.y
+        path_real_2.append([x,y])
+
+def path_length(path_sim):
+    prev_xy = None
+    act_dist = 0
+    for xy in path_sim:
+        if(prev_xy is not None):
+            act_dist += m.sqrt((xy[0] - prev_xy[0])**2 + (xy[1] - prev_xy[1])**2)
+        prev_xy = xy
+    return act_dist
+
+
+car_real_name = ["30","38"]
+for i in range(count):
+    subscriber_sim = rospy.Subscriber("/car" + str(i + 1) + "/car_pose", PoseStamped, pose_callback, (i + 1))
+    subscriber_real = rospy.Subscriber("/car" + car_real_name[i] + "/car_pose", PoseStamped, pose_callback, (i + 3))  # sim index 1 matches with real index 3, 2->4 
+
+r = rospy.Rate(1)
+while not rospy.is_shutdown():
+    r.sleep()
+
+path_1_length = path_length(path_sim_1)
+path_2_length = path_length(path_sim_2)
+
+path_real_1.reverse()
+path_real_2.reverse()
+path_polygon_1 = path_sim_1 + path_real_1
+path_polygon_2 = path_sim_2 + path_real_2
+
+print(path_1_length,path_2_length)
+area_1 = Polygon(path_polygon_1).area
+area_2 = Polygon(path_polygon_2).area
+
+average_cte_1 = area_1 / path_1_length
+average_cte_2 = area_2 / path_2_length
+path_polygon_1 = np.array(path_polygon_1)
+path_polygon_2 = np.array(path_polygon_2)
+
+print(average_cte_1, average_cte_2)
