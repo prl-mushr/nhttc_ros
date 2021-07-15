@@ -1,85 +1,68 @@
 #!/usr/bin/env python
-import rospy
-from geometry_msgs.msg import PoseStamped
-import math as m
-import time
-import numpy as np
+
+import sys
+import rosbag
+import math
 from shapely.geometry import Polygon
-import matplotlib.pyplot as plt
-import traceback
-start_time = time.time()
-dist = 10
-
-rospy.init_node("perf_evaluator")
-count = 2  # number of cars in sim/real
-
-path_sim_1 = []
-path_sim_2 = []
-path_real_1 = []
-path_real_2 = []
-
-def pose_callback(data, args):
-    """
-    function for recording the pose. The function also does some stuff to ease data collection
-
-    Params:
-        data: car pose
-        args: the tag of the car (0, 1, ...)
-    Returns:
-        None.
-    """
-    global count
-    if(args == 1):
-        x = data.pose.position.x
-        y = data.pose.position.y
-        path_sim_1.append([x,y])
-    elif(args == 2):
-        x = data.pose.position.x
-        y = data.pose.position.y
-        path_sim_2.append([x,y])
-    if(args == 3):
-        x = data.pose.position.x
-        y = data.pose.position.y
-        path_real_1.append([x,y])
-    elif(args == 4):
-        x = data.pose.position.x
-        y = data.pose.position.y
-        path_real_2.append([x,y])
 
 def path_length(path_sim):
-    prev_xy = None
+    prev_x = None
+    prev_y = None
     act_dist = 0
-    for xy in path_sim:
-        if(prev_xy is not None):
-            act_dist += m.sqrt((xy[0] - prev_xy[0])**2 + (xy[1] - prev_xy[1])**2)
-        prev_xy = xy
+    for x, y in path_sim:
+        if(prev_x is not None):
+            act_dist += math.sqrt((x - prev_x)**2 + (y - prev_y)**2)
+        prev_x = x
+        prev_y = y
     return act_dist
 
+def open_bag(filepath, bag_name):
+    try:
+        return rosbag.Bag(filepath)
+    except rosbag.ROSBagException:
+        print("Error: " + bag_name + " bag not readable!")
+        sys.exit(1)
 
-car_real_name = ["30","38"]
+def read_messages(bag, topic_list, car_names, msg_list):
+    for topic, msg, t in bag.read_messages(topics=topic_list):
+        agent_idx = car_names.index(topic[4:-9])
+        msg_list[agent_idx].append((msg.pose.position.x, msg.pose.position.y))
+    bag.close()
+
+if len(sys.argv) != 3:
+    print("Usage: ./perf_eval <path_to_sim_bag> <path_to_real_bag>")
+    sys.exit(2)
+    
+sim_bag = open_bag(sys.argv[1], "sim")
+real_bag = open_bag(sys.argv[2], "real")
+
+count = 2  # number of cars in sim/real
+car_sim_name = [str(i + 1) for i in range(count)]
+car_real_name = ["30", "38"]
+
+sim_paths = [[] for i in range(count)]
+real_paths = [[] for i in range(count)]
+
+sim_topics = []
+real_topics = []
+
 for i in range(count):
-    subscriber_sim = rospy.Subscriber("/car" + str(i + 1) + "/car_pose", PoseStamped, pose_callback, (i + 1))
-    subscriber_real = rospy.Subscriber("/car" + car_real_name[i] + "/car_pose", PoseStamped, pose_callback, (i + 3))  # sim index 1 matches with real index 3, 2->4 
+    sim_topics.append("/car" + str(i + 1) + "/car_pose")
+    real_topics.append("/car" + car_real_name[i] + "/car_pose")
 
-r = rospy.Rate(1)
-while not rospy.is_shutdown():
-    r.sleep()
+read_messages(sim_bag, sim_topics, car_sim_name, sim_paths)
+read_messages(real_bag, real_topics, car_real_name, real_paths)
 
-path_1_length = path_length(path_sim_1)
-path_2_length = path_length(path_sim_2)
+sim_path_lengths = [path_length(path) for path in sim_paths]
 
-path_real_1.reverse()
-path_real_2.reverse()
-path_polygon_1 = path_sim_1 + path_real_1
-path_polygon_2 = path_sim_2 + path_real_2
+for path in real_paths:
+    path.reverse()
 
-print(path_1_length,path_2_length)
-area_1 = Polygon(path_polygon_1).area
-area_2 = Polygon(path_polygon_2).area
+path_polygons = [sim_path + real_path for sim_path, real_path in zip(sim_paths, real_paths)]
 
-average_cte_1 = area_1 / path_1_length
-average_cte_2 = area_2 / path_2_length
-path_polygon_1 = np.array(path_polygon_1)
-path_polygon_2 = np.array(path_polygon_2)
+print("Lengths: " + reduce(lambda x, y: str(x) + " " + str(y), sim_path_lengths))
 
-print(average_cte_1, average_cte_2)
+areas = [Polygon(path_polygon).area for path_polygon in path_polygons]
+avg_ctes = [area / length for area, length in zip(areas, sim_path_lengths)]
+
+print("Average CTEs: " + reduce(lambda x, y: str(x) + " " + str(y), avg_ctes))
