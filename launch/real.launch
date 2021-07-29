@@ -14,13 +14,8 @@
     <arg name="other_car6" default = "car7"/>
     <arg name="other_car7" default = "car8"/>
 
-    <arg name="cgr" default = "1.0"/>
-    <arg name="mttc" default = "6.0"/>
-    <arg name="SolT" default = "20"/>
-    <arg name="follow_time" default = "true"/>
-    <arg name="allow_reverse" default="true"/>
-    <arg name="safety_radius" default="0.2"/>
-    <arg name="adaptive_lookahead" default="false"/>
+    <arg name="config_file" default="$(find nhttc_ros)/config/nhttc_real.yaml" />
+    <rosparam file="$(arg config_file)" command="load" />
 
     <!-- Set to 1 if you want to run the map_server -->
     <arg name="map_server" value = "0"/>
@@ -43,13 +38,7 @@
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" output="screen">
             <param name="max_agents" value="$(arg car_count)"/>
             <param name="car_name" value="$(arg own_name)"/>
-            <param name="solver_time" value="$(arg SolT)"/>
-            <param name="max_ttc" value="$(arg mttc)"/>
-            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
-            <param name="obey_time" value = "$(arg follow_time)" />
-            <param name="allow_reverse" value="$(arg allow_reverse)"/>
-            <param name="safety_radius" value="$(arg safety_radius")/>
-            <param name="adaptive_lookahead" value="$(arg adaptive_lookahead)"/>
+            <param name="sim" value="false"/>
         </node>
     </group>
 
