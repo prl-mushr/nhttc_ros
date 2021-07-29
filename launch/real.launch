@@ -1,0 +1,70 @@
+<launch>
+    <!-- <node type="rviz" name="rviz" pkg="rviz" args="-d $(find package_name)/rviz/multi_teleop.rviz" /> -->
+    <arg name="own_name" default="car38" />
+    
+    <!-- Total number of cars (including self) -->
+    <arg name="car_count" default = "2"/>
+    
+    <!-- Other car names (if car_count is 2, then nodes will read own_name, other_car1, then disregard the rest) -->
+    <arg name="other_car1" default = "car30"/>
+    <arg name="other_car2" default = "car3"/>
+    <arg name="other_car3" default = "car4"/>
+    <arg name="other_car4" default = "car5"/>
+    <arg name="other_car5" default = "car6"/>
+    <arg name="other_car6" default = "car7"/>
+    <arg name="other_car7" default = "car8"/>
+
+    <arg name="cgr" default = "1.0"/>
+    <arg name="mttc" default = "6.0"/>
+    <arg name="SolT" default = "20"/>
+    <arg name="follow_time" default = "true"/>
+    <arg name="allow_reverse" default="true"/>
+    <arg name="safety_radius" default="0.2"/>
+    <arg name="adaptive_lookahead" default="false"/>
+
+    <!-- Set to 1 if you want to run the map_server -->
+    <arg name="map_server" value = "0"/>
+
+    <!-- Launch  map server-->
+    <group if="$(arg map_server)">
+        <include file="$(find mushr_sim)/launch/map_server.launch" />
+	<!-- <include file="$(find nhttc_ros)/launch/map_server.launch" /> -->
+    </group>
+
+    <!-- Launch Teleop -->
+    <group>
+	<include file="$(find mushr_base)/launch/teleop.launch">
+	        <arg name="car_name" value="$(arg own_name)" />
+	</include>
+    </group>
+
+    <!-- Launch Own Controller -->
+    <group ns="$(arg own_name)">
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" output="screen">
+            <param name="max_agents" value="$(arg car_count)"/>
+            <param name="car_name" value="$(arg own_name)"/>
+            <param name="solver_time" value="$(arg SolT)"/>
+            <param name="max_ttc" value="$(arg mttc)"/>
+            <param name="carrot_goal_ratio" value="$(arg cgr)"/>
+            <param name="obey_time" value = "$(arg follow_time)" />
+            <param name="allow_reverse" value="$(arg allow_reverse)"/>
+            <param name="safety_radius" value="$(arg safety_radius")/>
+            <param name="adaptive_lookahead" value="$(arg adaptive_lookahead)"/>
+        </node>
+    </group>
+
+    <!-- <node pkg="nhttc_ros" type="nhttc_pose_goal_init.py" name="initializer" output="screen">
+        <param name="car_count" value="$(arg car_count)"/>
+        Each arg is a tuple of (car_name,boolean) of whether it is a sim car or not
+        <param name="car1_name-sim" value="$(arg own_name),0"/>
+        <param name="car2_name-sim" value="$(arg other_car1),0"/>
+        <param name="car3_name-sim" value="$(arg other_car2),1"/>
+        <param name="car4_name-sim" value="$(arg other_car3),1"/>
+        <param name="car5_name-sim" value="$(arg other_car4),1"/>
+        <param name="car6_name-sim" value="$(arg other_car5),1"/>
+        <param name="car7_name-sim" value="$(arg other_car6),1"/>
+	<param name="car8_name-sim" value="$(arg other_car7),1"/>
+    </node> -->
+    <!-- <node pkg="nhttc_ros" type="nhttc_publisher.py" name="waypointer"/> -->
+
+</launch>
