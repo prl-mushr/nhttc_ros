@@ -6,6 +6,7 @@
 #include "geometry_msgs/PoseArray.h"
 #include "ackermann_msgs/AckermannDriveStamped.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include <visualization_msgs/Marker.h>
 #include <string>
 #include <sstream>
 #include "nhttc_interface.h"
@@ -20,7 +21,7 @@ class nhttc_ros
 {
 public:
   ros::Subscriber sub_other_pose[16],sub_other_control[16];
-  ros::Subscriber sub_goal,sub_wp;
+  ros::Subscriber sub_goal,sub_wp, sub_marker;
   ros::Publisher pub_cmd, viz_pub, time_pub;
 
   std::string self_name;
@@ -50,6 +51,12 @@ public:
   bool obey_time;
   bool allow_reverse;
   bool adaptive_lookahead;
+  bool push_reconfigure;
+  bool reconfigure_index_found = false;
+  bool push_configuration;
+  Eigen::Vector2f mode_switch_pos;
+  int reconfigure_index;
+  float push_limit_radius;
 
   std::vector<TTCObstacle*> obstacles = BuildObstacleList(agents);
 
@@ -127,6 +134,49 @@ public:
     {
       agents[i].SetControls(controls);
     }
+  }
+
+  /**
+   * Marker callback. Useful to know when to switch between pushing and normal operation.
+   *
+   * This function listens to the marker messags published by the planner to get the location of the point where we must switch configuration
+   * @param takes marker message.
+  */
+  void MCallback(const visualization_msgs::Marker::ConstPtr& msg)
+  {
+    if(msg->type == visualization_msgs::Marker::CUBE)
+    {
+      mode_switch_pos[0] = msg->pose.position.x;
+      mode_switch_pos[1] = msg->pose.position.y;
+    }
+  }
+
+  /**
+   * function for calculating the index at which we must reconfigure the controller for normal behaviour with reverse allowed.
+  */
+  void get_reconfigure_index()
+  {
+    float min_dist = 10, dist;
+    int reconfig_ind = 0;
+    for(int i = 0; i < max_index; i++)
+    {
+      dist = (waypoints[i] - mode_switch_pos).norm();
+      if(dist < min_dist)
+      {
+        min_dist = dist;
+        reconfig_ind = i;
+      }
+    }
+    reconfigure_index = reconfig_ind; // local to global transfer. I use a local variable to avoid confusion/entanglement.
+  }
+
+  void update_param_normal()
+  {
+    agents[own_index].prob->params.safety_radius = 0.1; // reduce the safety radius
+    steer_limit = 0.1*M_PI;
+    agents[own_index].prob->params.steer_limit = steer_limit;
+    agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
+    ROS_INFO("parameters updated!");
   }
 
   /**
@@ -327,7 +377,16 @@ public:
     }
     if(not nh.getParam("/safety_radius", safety_radius))
     {
-      safety_radius = 0.1f;
+      safety_radius = 0.2f; // 0.2 m safety radius by default for pushing
+    }
+    if(not nh.getParam("/push_configuration", push_configuration))
+    {
+      push_configuration = false;
+    }
+    push_reconfigure = push_configuration; // if push configuration is true, then push-reconfiguration will be needed.
+    if(not nh.getParam("/push_limit_radius", push_limit_radius))
+    {
+      push_limit_radius = 1.82f;
     }
 
     ConstructGlobalParams(&global_params);
@@ -344,6 +403,7 @@ public:
       r.sleep();
     } // We do this once at the beginning in order to find the car belonging to our own nav controller
     // set up all the publishers/subscribers
+    sub_marker = nh.subscribe("/"+self_name+"/marker",10,&nhttc_ros::MCallback,this);
     sub_wp = nh.subscribe("/"+self_name+"/waypoints",10,&nhttc_ros::WPCallBack,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
     viz_pub = nh.advertise<geometry_msgs::PoseStamped>("/"+self_name+"/cur_goal",10);
@@ -361,14 +421,19 @@ public:
   void setup()
   {
     steer_limit = 0.1*M_PI; // max steering angle ~18 degrees. :(. I wanted to drift with the MuSHR car. 
+    float steer_limit_default = steer_limit;
     wheelbase = agents[own_index].prob->params.wheelbase;
-    agents[own_index].prob->params.safety_radius = safety_radius;
+    if(push_configuration) // basically check if pushing will happen.
+    {
+      steer_limit = atanf(wheelbase/push_limit_radius);
+    }
+    agents[own_index].prob->params.safety_radius = push_configuration ? 0.2 : safety_radius;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.vel_limit = speed_lim;
-    agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
+    agents[own_index].prob->params.u_lb = allow_reverse && !(push_reconfigure) ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
     agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim,steer_limit);
     agents[own_index].prob->params.max_ttc = max_ttc;
-    turning_radius = wheelbase/tanf(fabs(steer_limit));
+    turning_radius = wheelbase/tanf(fabs(steer_limit_default));
     fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = carrot_goal_ratio*turning_radius; 
     cutoff_dist += agents[own_index].prob->params.radius;
     ROS_INFO("carrot_goal_ratio: %f",carrot_goal_ratio);
@@ -378,6 +443,8 @@ public:
     ROS_INFO("allow_reverse: %d", int(allow_reverse));
     ROS_INFO("safety_radius: %f", safety_radius);
     ROS_INFO("adaptive_lookahead, %d", int(adaptive_lookahead));
+    ROS_INFO("push_configuration, %d", int(push_configuration));
+    ROS_INFO("Max steering_angle, %f", steer_limit*57.3);
   }
 
   /**
@@ -427,22 +494,51 @@ public:
       //if we have a goal
       if(goal_received)
       { 
-        // Find distance to current nhttc waypoint  
+        // Find distance to current nhttc waypoint
+        if(not reconfigure_index_found)
+        {
+          get_reconfigure_index();
+          ROS_INFO("reconfigure_index found at %d",reconfigure_index);
+          reconfigure_index_found = true; // Do this calc once.
+        }
+        else
+        {
+          if(current_wp_index == reconfigure_index and push_configuration)
+          {
+            push_configuration = false;
+            update_param_normal();
+            // add our block as a static agent to avoid. This is not ideal, should be updated to get the block's actual location.
+            agent_setup(count+1);
+            Eigen::VectorXf block_x_o = Eigen::VectorXf::Zero(3);
+            Eigen::VectorXf block_controls = Eigen::VectorXf::Zero(2);
+            block_x_o[0] = waypoints[reconfigure_index][0];
+            block_x_o[1] = waypoints[reconfigure_index][1];
+            block_x_o[2] = 0;
+            agents[count+1].prob->params.safety_radius = 0;
+            agents[count+1].prob->params.radius = 0.1;
+            agents[count+1].prob->params.max_ttc = max_ttc;
+            agents[count+1].SetEgo(block_x_o);
+            agents[count+1].SetControls(block_controls);
+          }
+        }
+
+
         Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
-        Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector 
-        float dist = wp_vec.norm(); //distance from goal wp taking into account the aspect angle. If the point is perpendicular to my direction of motion, I have probably passed it.
+        Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector
+        float multiplier = fabs(wp_vec.dot(head_vec));
+        float dist = multiplier*wp_vec.norm(); //distance from goal wp.
         // now search for the nearest waypoint thats still ahead of me.
         // note, this depends on previously calculated heading vector. This evaluation works similarly to the above calc.
         Eigen::Vector2f tp_vec = (waypoints[time_index] - agent_state.head(2)); // tp: time point
-        float multiplier = tp_vec.dot(head_vec)>0? 1.0f : -1.0f;
-        float time_point_dist = multiplier*tp_vec.norm();
+        multiplier = fabs(tp_vec.dot(head_vec));
+        float time_point_dist = tp_vec.norm(); // removed the multiplier here, because in if the waypoints are intentionally behind the car, this would just skip them. we don't want that.
         if(time_point_dist < agents[own_index].prob->params.safety_radius)
         {
           time_index++;
           time_viz_publish();
           // re-evaluate the time_point_distance
           tp_vec = (waypoints[time_index] - agent_state.head(2));
-          multiplier = tp_vec.dot(head_vec)>0? 1.0f : -1.0f;
+          multiplier = fabs(tp_vec.dot(head_vec));
           time_point_dist = multiplier*tp_vec.norm();
         }
 
@@ -488,7 +584,7 @@ public:
         }
       }
       float speed = controls[0]; //speed in m/s
-      float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right 
+      float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right
       send_commands(speed,steering_angle); //just sending out anything for now;
       return;
     }
