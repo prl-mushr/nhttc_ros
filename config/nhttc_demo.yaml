@@ -7,3 +7,4 @@ safety_radius: 0.2
 adaptive_lookahead: false
 push_configuration: true
 push_limit_radius: 1.82
+delivery_tolerance: 0.01

@@ -47,6 +47,7 @@ public:
   float speed_lim = 0.4f;
   float cur_time_stamp;
   float safety_radius;
+  float delivery_tolerance;
   int time_index;
   bool obey_time;
   bool allow_reverse;
@@ -172,7 +173,7 @@ public:
 
   void update_param_normal()
   {
-    agents[own_index].prob->params.safety_radius = 0.1; // reduce the safety radius
+    agents[own_index].prob->params.safety_radius = safety_radius; // reduce the safety radius
     steer_limit = 0.1*M_PI;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
@@ -388,6 +389,11 @@ public:
     {
       push_limit_radius = 1.82f;
     }
+    if(not nh.getParam("/delivery_tolerance", delivery_tolerance))
+    {
+      delivery_tolerance = 0.05; // 5 cm default delivery tolerance
+    }
+    delivery_tolerance = delivery_tolerance > 0.01 ? delivery_tolerance : 0.01;
 
     ConstructGlobalParams(&global_params);
     count = -1; //number of agents. start from -1.
@@ -445,6 +451,7 @@ public:
     ROS_INFO("adaptive_lookahead, %d", int(adaptive_lookahead));
     ROS_INFO("push_configuration, %d", int(push_configuration));
     ROS_INFO("Max steering_angle, %f", steer_limit*57.3);
+    ROS_INFO("delivery_tolerance, %f cm or %f inches if you use imperial units (my condolences)", delivery_tolerance*100, delivery_tolerance*100/2.54);
   }
 
   /**
@@ -503,7 +510,7 @@ public:
         }
         else
         {
-          if(current_wp_index == reconfigure_index and push_configuration)
+          if(current_wp_index == reconfigure_index+1 and push_configuration)
           {
             push_configuration = false;
             update_param_normal();
@@ -568,8 +575,15 @@ public:
         {
           if(current_wp_index < max_index-1)
           {
-            agents[own_index].goal = waypoints[++current_wp_index];
-            viz_publish(); // publish new goal point 
+            if(current_wp_index == reconfigure_index and dist*wp_vec.dot(head_vec) > delivery_tolerance and push_configuration) // last condition tests whether the wp has been overshot or not
+            {  
+              ROS_INFO("zeroing in on delivery location!");
+            }
+            else
+            {
+              agents[own_index].goal = waypoints[++current_wp_index];
+              viz_publish(); // publish new goal point 
+            }
           }
           if(dist < wheelbase and current_wp_index >= max_index-1) //condition for having reached the final waypoint. the cutoff distance for the final waypoint is less than the standard cutoff. This can later be extended to "must-pass" waypoints.
           {
