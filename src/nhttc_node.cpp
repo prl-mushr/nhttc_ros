@@ -538,7 +538,7 @@ public:
         // note, this depends on previously calculated heading vector. This evaluation works similarly to the above calc.
         Eigen::Vector2f tp_vec = (waypoints[time_index] - agent_state.head(2)); // tp: time point
         multiplier = fabs(tp_vec.dot(head_vec));
-        float time_point_dist = tp_vec.norm(); // removed the multiplier here, because in if the waypoints are intentionally behind the car, this would just skip them. we don't want that.
+        float time_point_dist = multiplier*tp_vec.norm(); // removed the multiplier here, because in if the waypoints are intentionally behind the car, this would just skip them. we don't want that.
         if(time_point_dist < agents[own_index].prob->params.safety_radius)
         {
           time_index++;
