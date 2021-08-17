@@ -577,11 +577,14 @@ public:
           {
             if(current_wp_index == reconfigure_index and dist*wp_vec.dot(head_vec) > delivery_tolerance and push_configuration) // last condition tests whether the wp has been overshot or not
             {  
-              ROS_INFO("zeroing in on delivery location!");
+              ROS_INFO("zeroing in on delivery location! %f", dist);
+              agents[own_index].prob->params.safety_radius = 0;
+              controls = agents[own_index].UpdateControls();
             }
             else
             {
               agents[own_index].goal = waypoints[++current_wp_index];
+              controls = agents[own_index].UpdateControls();
               viz_publish(); // publish new goal point 
             }
           }
