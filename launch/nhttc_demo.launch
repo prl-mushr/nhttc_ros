@@ -39,6 +39,7 @@
         </node>
     </group>
 
+
     <node pkg="nhttc_ros" type="nhttc_pose_init" name="initializer"/>
 
 </launch>

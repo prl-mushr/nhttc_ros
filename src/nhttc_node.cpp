@@ -507,6 +507,13 @@ public:
           get_reconfigure_index();
           ROS_INFO("reconfigure_index found at %d",reconfigure_index);
           reconfigure_index_found = true; // Do this calc once.
+          if(max_index - reconfigure_index < 2)
+          {
+            for(int i=0;i<2;i++)
+            {
+              waypoints.push_back(waypoints[max_index-1]);
+            }
+          }
         }
         else
         {
@@ -573,7 +580,7 @@ public:
         }
         if(dist < cutoff_dist)
         {
-          if(current_wp_index < max_index-1)
+          if(current_wp_index < max_index)
           {
             if(current_wp_index == reconfigure_index and dist*wp_vec.dot(head_vec) > delivery_tolerance and push_configuration) // last condition tests whether the wp has been overshot or not
             {  
@@ -588,15 +595,17 @@ public:
               viz_publish(); // publish new goal point 
             }
           }
-          if(dist < wheelbase and current_wp_index >= max_index-1) //condition for having reached the final waypoint. the cutoff distance for the final waypoint is less than the standard cutoff. This can later be extended to "must-pass" waypoints.
-          {
-            controls[0] = 0;
-            controls[1] = 0;
-            goal_received = false;
-          }
           else
           {
             controls = agents[own_index].UpdateControls(); // in case it is the final waypoint, keep going until dist-to-go is less than wheelbase
+            ROS_INFO("helloooo")
+            if(current_wp_index > max_index-1)
+            {
+              controls[0] = 0;
+              controls[1] = 0;
+              goal_received = false;
+              ROS_INFO("kill power");
+            }
           }
         }
       }
