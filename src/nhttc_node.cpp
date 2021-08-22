@@ -433,7 +433,7 @@ public:
     {
       steer_limit = atanf(wheelbase/push_limit_radius);
     }
-    agents[own_index].prob->params.safety_radius = push_configuration ? 0.2 : safety_radius;
+    agents[own_index].prob->params.safety_radius = safety_radius;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.vel_limit = speed_lim;
     agents[own_index].prob->params.u_lb = allow_reverse && !(push_reconfigure) ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
