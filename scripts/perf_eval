@@ -24,8 +24,13 @@ def open_bag(filepath):
         sys.exit(1)
 
 def read_messages(bag, topic_list, car_names, msg_list):
+    waypoint_pub_time = None
+    waypoint_topic_list = [topic[:-9] + "/waypoints" for topic in topic_list]
+    for topic, msg, t in bag.read_messages(topics=waypoint_topic_list):
+        waypoint_pub_time = t
+        break;
     car_count = 0
-    for topic, msg, t in bag.read_messages(topics=topic_list):
+    for topic, msg, t in bag.read_messages(topics=topic_list, start_time=waypoint_pub_time):
         agent_idx = car_names.index(topic[4:-9])
         if len(msg_list[agent_idx]) == 0: # new car found
             car_count += 1
@@ -44,7 +49,7 @@ car_sim_name = [str(i + 1) for i in range(max_count)]
 car_real_name = ["30", "38", "39", "42"] # a testcase with n cars must use the first n names in this list
 
 if len(car_real_name) != max_count:
-    print("Number of real car names must match max number of cars, please edit the script!")
+    print("Error: number of real car names must match max number of cars, please edit the script!")
     sys.exit(1)
 
 sim_paths = [[] for i in range(max_count)]
@@ -62,6 +67,10 @@ if sim_count == 0:
 
 if real_count == 0:
     real_count = read_messages(real_bag, sim_topics, car_sim_name, real_paths)
+
+if sim_count == 0 or real_count == 0:
+    print("Error: no car pose data found in bag at " + (sys.argv[1] if sim_count == 0 else sys.argv[2]))
+    sys.exit(1)
 
 if sim_count != real_count:
     print("Error: number of sim cars does not match number of real cars!")
