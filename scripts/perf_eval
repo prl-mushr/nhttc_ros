@@ -16,11 +16,11 @@ def path_length(path_sim):
         prev_y = y
     return act_dist
 
-def open_bag(filepath, bag_name):
+def open_bag(filepath):
     try:
         return rosbag.Bag(filepath)
-    except rosbag.ROSBagException:
-        print("Error: " + bag_name + " bag not readable!")
+    except (rosbag.ROSBagException, IOError) as e:
+        print("Error: bag at " + filepath + " not readable!")
         sys.exit(1)
 
 def read_messages(bag, topic_list, car_names, msg_list):
@@ -30,15 +30,14 @@ def read_messages(bag, topic_list, car_names, msg_list):
         if len(msg_list[agent_idx]) == 0: # new car found
             car_count += 1
         msg_list[agent_idx].append((msg.pose.position.x, msg.pose.position.y))
-    bag.close()
     return car_count
 
 if len(sys.argv) != 3:
     print("Usage: ./perf_eval <path_to_sim_bag> <path_to_real_bag>")
     sys.exit(2)
 
-sim_bag = open_bag(sys.argv[1], "sim")
-real_bag = open_bag(sys.argv[2], "real")
+sim_bag = open_bag(sys.argv[1])
+real_bag = open_bag(sys.argv[2])
 
 max_count = 4 # max number of cars out of all testcases
 car_sim_name = [str(i + 1) for i in range(max_count)]
@@ -56,6 +55,13 @@ real_topics = ["/car" + name + "/car_pose" for name in car_real_name]
 
 sim_count = read_messages(sim_bag, sim_topics, car_sim_name, sim_paths)
 real_count = read_messages(real_bag, real_topics, car_real_name, real_paths)
+
+# Handle bag order being switched or giving 2 sim or real bags
+if sim_count == 0:
+    sim_count = read_messages(sim_bag, real_topics, car_real_name, sim_paths)
+
+if real_count == 0:
+    real_count = read_messages(real_bag, sim_topics, car_sim_name, real_paths)
 
 if sim_count != real_count:
     print("Error: number of sim cars does not match number of real cars!")
@@ -77,3 +83,6 @@ areas = [Polygon(path_polygon).area for path_polygon in path_polygons]
 avg_ctes = [area / length for area, length in zip(areas, sim_path_lengths)]
 
 print("Average CTEs: " + reduce(lambda x, y: str(x) + " " + str(y), avg_ctes))
+
+sim_bag.close()
+real_bag.close()
