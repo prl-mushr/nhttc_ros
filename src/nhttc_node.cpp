@@ -598,7 +598,6 @@ public:
           else
           {
             controls = agents[own_index].UpdateControls(); // in case it is the final waypoint, keep going until dist-to-go is less than wheelbase
-            ROS_INFO("helloooo")
             if(current_wp_index > max_index-1)
             {
               controls[0] = 0;
