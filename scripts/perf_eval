@@ -16,42 +16,68 @@ def path_length(path_sim):
         prev_y = y
     return act_dist
 
-def open_bag(filepath, bag_name):
+def open_bag(filepath):
     try:
         return rosbag.Bag(filepath)
-    except rosbag.ROSBagException:
-        print("Error: " + bag_name + " bag not readable!")
+    except (rosbag.ROSBagException, IOError) as e:
+        print("Error: bag at " + filepath + " not readable!")
         sys.exit(1)
 
 def read_messages(bag, topic_list, car_names, msg_list):
-    for topic, msg, t in bag.read_messages(topics=topic_list):
+    waypoint_pub_time = None
+    waypoint_topic_list = [topic[:-9] + "/waypoints" for topic in topic_list]
+    for topic, msg, t in bag.read_messages(topics=waypoint_topic_list):
+        waypoint_pub_time = t
+        break;
+    car_count = 0
+    for topic, msg, t in bag.read_messages(topics=topic_list, start_time=waypoint_pub_time):
         agent_idx = car_names.index(topic[4:-9])
+        if len(msg_list[agent_idx]) == 0: # new car found
+            car_count += 1
         msg_list[agent_idx].append((msg.pose.position.x, msg.pose.position.y))
-    bag.close()
+    return car_count
 
 if len(sys.argv) != 3:
     print("Usage: ./perf_eval <path_to_sim_bag> <path_to_real_bag>")
     sys.exit(2)
-    
-sim_bag = open_bag(sys.argv[1], "sim")
-real_bag = open_bag(sys.argv[2], "real")
 
-count = 2  # number of cars in sim/real
-car_sim_name = [str(i + 1) for i in range(count)]
-car_real_name = ["30", "38"]
+sim_bag = open_bag(sys.argv[1])
+real_bag = open_bag(sys.argv[2])
 
-sim_paths = [[] for i in range(count)]
-real_paths = [[] for i in range(count)]
+max_count = 4 # max number of cars out of all testcases
+car_sim_name = [str(i + 1) for i in range(max_count)]
+car_real_name = ["30", "38", "39", "42"] # a testcase with n cars must use the first n names in this list
 
-sim_topics = []
-real_topics = []
+if len(car_real_name) != max_count:
+    print("Error: number of real car names must match max number of cars, please edit the script!")
+    sys.exit(1)
 
-for i in range(count):
-    sim_topics.append("/car" + str(i + 1) + "/car_pose")
-    real_topics.append("/car" + car_real_name[i] + "/car_pose")
+sim_paths = [[] for i in range(max_count)]
+real_paths = [[] for i in range(max_count)]
 
-read_messages(sim_bag, sim_topics, car_sim_name, sim_paths)
-read_messages(real_bag, real_topics, car_real_name, real_paths)
+sim_topics = ["/car" + name + "/car_pose" for name in car_sim_name]
+real_topics = ["/car" + name + "/car_pose" for name in car_real_name]
+
+sim_count = read_messages(sim_bag, sim_topics, car_sim_name, sim_paths)
+real_count = read_messages(real_bag, real_topics, car_real_name, real_paths)
+
+# Handle bag order being switched or giving 2 sim or real bags
+if sim_count == 0:
+    sim_count = read_messages(sim_bag, real_topics, car_real_name, sim_paths)
+
+if real_count == 0:
+    real_count = read_messages(real_bag, sim_topics, car_sim_name, real_paths)
+
+if sim_count == 0 or real_count == 0:
+    print("Error: no car pose data found in bag at " + (sys.argv[1] if sim_count == 0 else sys.argv[2]))
+    sys.exit(1)
+
+if sim_count != real_count:
+    print("Error: number of sim cars does not match number of real cars!")
+    sys.exit(1)
+
+sim_paths = sim_paths[:sim_count]
+real_paths = real_paths[:real_count]
 
 sim_path_lengths = [path_length(path) for path in sim_paths]
 
@@ -66,3 +92,6 @@ areas = [Polygon(path_polygon).area for path_polygon in path_polygons]
 avg_ctes = [area / length for area, length in zip(areas, sim_path_lengths)]
 
 print("Average CTEs: " + reduce(lambda x, y: str(x) + " " + str(y), avg_ctes))
+
+sim_bag.close()
+real_bag.close()

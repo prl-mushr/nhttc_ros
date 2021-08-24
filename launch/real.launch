@@ -1,20 +1,19 @@
 <launch>
-    <!-- <node type="rviz" name="rviz" pkg="rviz" args="-d $(find package_name)/rviz/multi_teleop.rviz" /> -->
-    <arg name="own_name" default="car38" />
+    <arg name="own_name" default="car30" />
     
     <!-- Total number of cars (including self) -->
-    <arg name="car_count" default = "2"/>
+    <arg name="car_count" default = "3"/>
     
     <!-- Other car names (if car_count is 2, then nodes will read own_name, other_car1, then disregard the rest) -->
-    <arg name="other_car1" default = "car30"/>
-    <arg name="other_car2" default = "car3"/>
-    <arg name="other_car3" default = "car4"/>
+    <arg name="other_car1" default = "car38"/>
+    <arg name="other_car2" default = "car39"/>
+    <arg name="other_car3" default = "car42"/>
     <arg name="other_car4" default = "car5"/>
     <arg name="other_car5" default = "car6"/>
     <arg name="other_car6" default = "car7"/>
     <arg name="other_car7" default = "car8"/>
 
-    <arg name="config_file" default="$(find nhttc_ros)/config/nhttc_real.yaml" />
+    <arg name="config_file" default="$(find nhttc_ros)/config/nhttc_demo.yaml" />
     <rosparam file="$(arg config_file)" command="load" />
 
     <!-- Set to 1 if you want to run the map_server -->
@@ -23,7 +22,6 @@
     <!-- Launch  map server-->
     <group if="$(arg map_server)">
         <include file="$(find mushr_sim)/launch/map_server.launch" />
-	<!-- <include file="$(find nhttc_ros)/launch/map_server.launch" /> -->
     </group>
 
     <!-- Launch Teleop -->
@@ -47,8 +45,8 @@
         Each arg is a tuple of (car_name,boolean) of whether it is a sim car or not
         <param name="car1_name-sim" value="$(arg own_name),0"/>
         <param name="car2_name-sim" value="$(arg other_car1),0"/>
-        <param name="car3_name-sim" value="$(arg other_car2),1"/>
-        <param name="car4_name-sim" value="$(arg other_car3),1"/>
+        <param name="car3_name-sim" value="$(arg other_car2),0"/>
+        <param name="car4_name-sim" value="$(arg other_car3),0"/>
         <param name="car5_name-sim" value="$(arg other_car4),1"/>
         <param name="car6_name-sim" value="$(arg other_car5),1"/>
         <param name="car7_name-sim" value="$(arg other_car6),1"/>
