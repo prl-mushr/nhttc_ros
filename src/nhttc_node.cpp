@@ -433,7 +433,7 @@ public:
     {
       steer_limit = atanf(wheelbase/push_limit_radius);
     }
-    agents[own_index].prob->params.safety_radius = push_configuration ? 0.2 : safety_radius;
+    agents[own_index].prob->params.safety_radius = push_configuration ? 0.1 : safety_radius;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.vel_limit = speed_lim;
     agents[own_index].prob->params.u_lb = allow_reverse && !(push_reconfigure) ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
@@ -498,6 +498,7 @@ public:
 
       Eigen::VectorXf controls = Eigen::VectorXf::Zero(2); //controls are 0,0 by default.
       Eigen::VectorXf agent_state = agents[own_index].prob->params.x_0; //get agent's current state
+      Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector
       //if we have a goal
       if(goal_received)
       { 
@@ -507,13 +508,6 @@ public:
           get_reconfigure_index();
           ROS_INFO("reconfigure_index found at %d",reconfigure_index);
           reconfigure_index_found = true; // Do this calc once.
-          if(max_index - reconfigure_index < 2)
-          {
-            for(int i=0;i<2;i++)
-            {
-              waypoints.push_back(waypoints[max_index-1]);
-            }
-          }
         }
         else
         {
@@ -536,9 +530,13 @@ public:
           }
         }
 
+        // if(current_wp_index == reconfigure_index)
+        // {
+        //   agent_state.head(2) -= wheelbase*head_vec;
+        // }
+        agents[own_index].SetEgo(agent_state); // This is such a bad way of doing things. No semaphore locks. What if the callback changes the value right after this line? #POSSIBLE BUG
 
         Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
-        Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector
         float multiplier = fabs(wp_vec.dot(head_vec));
         float dist = multiplier*wp_vec.norm(); //distance from goal wp.
         // now search for the nearest waypoint thats still ahead of me.
@@ -578,9 +576,10 @@ public:
         {
           controls = agents[own_index].UpdateControls();
         }
+
         if(dist < cutoff_dist)
         {
-          if(current_wp_index < max_index)
+          if(current_wp_index < max_index-1)
           {
             if(current_wp_index == reconfigure_index and dist*wp_vec.dot(head_vec) > delivery_tolerance and push_configuration) // last condition tests whether the wp has been overshot or not
             {  
@@ -590,7 +589,8 @@ public:
             }
             else
             {
-              agents[own_index].goal = waypoints[++current_wp_index];
+              current_wp_index = std::min(max_index - 1, current_wp_index + 1);
+              agents[own_index].goal = waypoints[current_wp_index];
               controls = agents[own_index].UpdateControls();
               viz_publish(); // publish new goal point 
             }
@@ -598,7 +598,9 @@ public:
           else
           {
             controls = agents[own_index].UpdateControls(); // in case it is the final waypoint, keep going until dist-to-go is less than wheelbase
-            if(current_wp_index > max_index-1)
+            current_wp_index = std::min(max_index, current_wp_index + 1);
+            ROS_INFO("dist %f", dist);
+            if(current_wp_index >= max_index-1 and dist < delivery_tolerance)
             {
               controls[0] = 0;
               controls[1] = 0;
@@ -608,6 +610,7 @@ public:
           }
         }
       }
+      controls[0] = push_configuration ? std::max(0.0f, controls[0]) : controls[0];
       float speed = controls[0]; //speed in m/s
       float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right
       send_commands(speed,steering_angle); //just sending out anything for now;
