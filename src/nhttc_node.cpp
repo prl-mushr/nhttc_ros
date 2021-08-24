@@ -530,10 +530,10 @@ public:
           }
         }
 
-        // if(current_wp_index == reconfigure_index)
-        // {
-        //   agent_state.head(2) -= wheelbase*head_vec;
-        // }
+        if(current_wp_index == reconfigure_index)
+        {
+          agent_state.head(2) -= wheelbase*head_vec;
+        }
         agents[own_index].SetEgo(agent_state); // This is such a bad way of doing things. No semaphore locks. What if the callback changes the value right after this line? #POSSIBLE BUG
 
         Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
