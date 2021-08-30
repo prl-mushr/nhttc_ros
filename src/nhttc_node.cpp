@@ -393,6 +393,11 @@ public:
     {
       delivery_tolerance = 0.05; // 5 cm default delivery tolerance
     }
+    if(not nh.getParam("/speed_lim", speed_lim))
+    {
+      speed_lim = 0.4;
+    }
+    speed_lim = std::min(speed_lim, 1.0f); // gotta limit speed to 1 m/s. Lets not push our luck to far!
     delivery_tolerance = delivery_tolerance > 0.01 ? delivery_tolerance : 0.01;
 
     ConstructGlobalParams(&global_params);
@@ -433,7 +438,7 @@ public:
     {
       steer_limit = atanf(wheelbase/push_limit_radius);
     }
-    agents[own_index].prob->params.safety_radius = push_configuration ? 0.1 : safety_radius;
+    agents[own_index].prob->params.safety_radius = push_configuration ? 0.1+safety_radius : safety_radius;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.vel_limit = speed_lim;
     agents[own_index].prob->params.u_lb = allow_reverse && !(push_reconfigure) ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
@@ -442,6 +447,7 @@ public:
     turning_radius = wheelbase/tanf(fabs(steer_limit_default));
     fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = carrot_goal_ratio*turning_radius; 
     cutoff_dist += agents[own_index].prob->params.radius;
+    // print parameters so that the user can confirm them before each run:
     ROS_INFO("carrot_goal_ratio: %f",carrot_goal_ratio);
     ROS_INFO("max_ttc: %f", max_ttc);
     ROS_INFO("solver_time: %d", solver_time);
@@ -451,7 +457,8 @@ public:
     ROS_INFO("adaptive_lookahead, %d", int(adaptive_lookahead));
     ROS_INFO("push_configuration, %d", int(push_configuration));
     ROS_INFO("Max steering_angle, %f", steer_limit*57.3);
-    ROS_INFO("delivery_tolerance, %f cm or %f inches if you use imperial units (my condolences)", delivery_tolerance*100, delivery_tolerance*100/2.54);
+    ROS_INFO("delivery_tolerance, %f cm", delivery_tolerance*100);
+    ROS_INFO("speed_limit: %f m/s", speed_lim);
   }
 
   /**
