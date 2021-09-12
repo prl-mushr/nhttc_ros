@@ -45,6 +45,7 @@ public:
   std::vector<Agent> agents; //all agents
   int count;
   float speed_lim = 0.4f;
+  float extra_radius;
   float cur_time_stamp;
   float safety_radius;
   float delivery_tolerance;
@@ -397,6 +398,10 @@ public:
     {
       speed_lim = 0.4;
     }
+    if(not nh.getParam("/" + self_name + "/controller/extra_rad", extra_radius)) // extra radius added on top of safety radius (maybe just modify safety radius directly?)
+    {
+      extra_radius = 0;
+    }
     speed_lim = std::min(speed_lim, 1.0f); // gotta limit speed to 1 m/s. Lets not push our luck to far!
     delivery_tolerance = delivery_tolerance > 0.01 ? delivery_tolerance : 0.01;
 
@@ -438,7 +443,7 @@ public:
     {
       steer_limit = atanf(wheelbase/push_limit_radius);
     }
-    agents[own_index].prob->params.safety_radius = push_configuration ? 0.1+safety_radius : safety_radius;
+    agents[own_index].prob->params.safety_radius = push_configuration ? 0.1 + safety_radius + extra_radius : safety_radius + extra_radius;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.vel_limit = speed_lim;
     agents[own_index].prob->params.u_lb = allow_reverse && !(push_reconfigure) ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
