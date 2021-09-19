@@ -26,7 +26,6 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" launch-prefix="gdb -ex run --args" output="screen">
             <param name="car_name" value="car1"/>
-            <param name="extra_rad" value="0.0"/>
         </node>
     </group>
 
@@ -40,7 +39,6 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
             <param name="car_name" value="car2"/>
-            <param name="extra_rad" value="0.1"/>
         </node>
     </group>
 
@@ -53,7 +51,6 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller3">
             <param name="car_name" value="car3"/>
-            <param name="extra_rad" value="0.2"/>
         </node>
     </group>
 
@@ -66,7 +63,6 @@
         </include>
         <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller4">
             <param name="car_name" value="car4"/>
-            <param name="extra_rad" value="0.3"/>
         </node>
     </group>
 
