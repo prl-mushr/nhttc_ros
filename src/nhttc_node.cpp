@@ -521,7 +521,7 @@ public:
           if(current_wp_index == reconfigure_index+1 and push_configuration)
           {
             push_configuration = false;
-            update_param_normal();
+            // update_param_normal();
             // add our block as a static agent to avoid. This is not ideal, should be updated to get the block's actual location.
             agent_setup(count+1);
             Eigen::VectorXf block_x_o = Eigen::VectorXf::Zero(3);
