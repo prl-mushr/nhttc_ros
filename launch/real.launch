@@ -13,7 +13,7 @@
     <arg name="other_car6" default = "car7"/>
     <arg name="other_car7" default = "car8"/>
 
-    <arg name="config_file" default="$(find nhttc_ros)/config/nhttc_demo.yaml" />
+    <arg name="config_file" default="$(find nhttc_ros)/config/nhttc_real.yaml" />
     <rosparam file="$(arg config_file)" command="load" />
 
     <!-- Set to 1 if you want to run the map_server -->

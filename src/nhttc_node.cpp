@@ -116,6 +116,11 @@ public:
     x_o[0] = msg->pose.position.x;
     x_o[1] = msg->pose.position.y;
     x_o[2] = rpy[2];
+    if(simulation)
+    {
+      x_o[0] -= 0.15*cosf(x_o[2]);
+      x_o[1] -= 0.15*sinf(x_o[2]);
+    }
     agents[i].SetEgo(x_o);
   }
 
@@ -438,7 +443,9 @@ public:
     {
       steer_limit = atanf(wheelbase/push_limit_radius);
     }
-    agents[own_index].prob->params.safety_radius = push_configuration ? 0.1 + safety_radius: safety_radius;
+    float car_radius = 0.2f;
+    agents[own_index].prob->params.radius = push_configuration ? 0.1 + car_radius: car_radius;
+    agents[own_index].prob->params.safety_radius = safety_radius;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.vel_limit = speed_lim;
     agents[own_index].prob->params.u_lb = allow_reverse && !(push_reconfigure) ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
@@ -448,6 +455,7 @@ public:
     fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = carrot_goal_ratio*turning_radius; 
     cutoff_dist += agents[own_index].prob->params.radius;
     // print parameters so that the user can confirm them before each run:
+    ROS_INFO("running in simulation ? %d", int(simulation));
     ROS_INFO("carrot_goal_ratio: %f",carrot_goal_ratio);
     ROS_INFO("max_ttc: %f", max_ttc);
     ROS_INFO("solver_time: %d", solver_time);
@@ -545,12 +553,12 @@ public:
 
         Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
         float multiplier = fabs(wp_vec.dot(head_vec));
-        float dist = multiplier*wp_vec.norm(); //distance from goal wp.
+        float dist = multiplier; //distance from goal wp.
         // now search for the nearest waypoint thats still ahead of me.
         // note, this depends on previously calculated heading vector. This evaluation works similarly to the above calc.
         Eigen::Vector2f tp_vec = (waypoints[time_index] - agent_state.head(2)); // tp: time point
         multiplier = fabs(tp_vec.dot(head_vec));
-        float time_point_dist = multiplier*tp_vec.norm(); // removed the multiplier here, because in if the waypoints are intentionally behind the car, this would just skip them. we don't want that.
+        float time_point_dist = multiplier; // removed the multiplier here, because in if the waypoints are intentionally behind the car, this would just skip them. we don't want that.
         if(time_point_dist < agents[own_index].prob->params.safety_radius)
         {
           time_index++;
@@ -558,7 +566,7 @@ public:
           // re-evaluate the time_point_distance
           tp_vec = (waypoints[time_index] - agent_state.head(2));
           multiplier = fabs(tp_vec.dot(head_vec));
-          time_point_dist = multiplier*tp_vec.norm();
+          time_point_dist = multiplier;
         }
 
         if(obey_time)
@@ -573,6 +581,10 @@ public:
           agents[own_index].prob->params.vel_limit = speed_lim + delta_speed; //set the new speed limit 
           agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-(speed_lim + delta_speed), -steer_limit) : Eigen::Vector2f(0, -steer_limit); // set the upper and lower bound corresponding to this limit
           agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim + delta_speed,steer_limit);
+          if(dist_error > 2)
+          {
+            ROS_INFO("DEADLOCK DETECTED");
+          }
         }
 
         if(do_skip_waypoint(wp_vec,agent_state[2]) and current_wp_index < max_index - 1) //second condition is to ensure it doesn't finess the last waypoint
@@ -607,7 +619,7 @@ public:
             controls = agents[own_index].UpdateControls(); // in case it is the final waypoint, keep going until dist-to-go is less than wheelbase
             current_wp_index = std::min(max_index, current_wp_index + 1);
             ROS_INFO("dist %f", dist);
-            if(current_wp_index >= max_index-1 and dist < delivery_tolerance)
+            if(current_wp_index >= max_index-1 and dist < delivery_tolerance + agents[own_index].prob->params.radius)
             {
               controls[0] = 0;
               controls[1] = 0;

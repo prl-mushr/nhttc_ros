@@ -1,7 +1,12 @@
-carrot_goal_ratio: 1.0
-max_ttc: 6.0
+sim: false
+carrot_goal_ratio: 0.2
+max_ttc: 3.0
 solver_time: 20
 obey_time: true
-allow_reverse: true
-safety_radius: 0.2
+allow_reverse: false
+safety_radius: 0.1
 adaptive_lookahead: false
+push_configuration: true
+push_limit_radius: 1.82
+delivery_tolerance: 0.1
+speed_lim: 0.4
