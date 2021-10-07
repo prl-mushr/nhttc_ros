@@ -55,6 +55,7 @@ public:
   bool push_reconfigure;
   bool reconfigure_index_found = false;
   bool push_configuration;
+  bool destination_reached = false;
   Eigen::Vector2f mode_switch_pos;
   int reconfigure_index;
   float push_limit_radius;
@@ -263,6 +264,7 @@ public:
     output_msg.header.frame_id = "/map";
     output_msg.pose.position.x = agents[own_index].goal[0];
     output_msg.pose.position.y = agents[own_index].goal[1];
+    output_msg.pose.position.z = float(destination_reached); // 1 if goal reached
     viz_pub.publish(output_msg);
   }
 
@@ -625,6 +627,8 @@ public:
               controls[1] = 0;
               goal_received = false;
               ROS_INFO("kill power");
+              destination_reached = true;
+              viz_publish();
             }
           }
         }
