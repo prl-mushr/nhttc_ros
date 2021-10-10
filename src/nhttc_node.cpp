@@ -59,6 +59,7 @@ public:
   Eigen::Vector2f mode_switch_pos;
   int reconfigure_index;
   float push_limit_radius;
+  float last_time_error = 0;
 
   std::vector<TTCObstacle*> obstacles = BuildObstacleList(agents);
 
@@ -176,7 +177,9 @@ public:
     }
     reconfigure_index = reconfig_ind; // local to global transfer. I use a local variable to avoid confusion/entanglement.
   }
-
+  /**
+  function to reset parameters to normal mode (non-pushing). Do not use unless both pushing and non-pushing modes are needed.
+  */
   void update_param_normal()
   {
     agents[own_index].prob->params.safety_radius = safety_radius; // reduce the safety radius
@@ -459,6 +462,7 @@ public:
     // print parameters so that the user can confirm them before each run:
     ROS_INFO("running in simulation ? %d", int(simulation));
     ROS_INFO("carrot_goal_ratio: %f",carrot_goal_ratio);
+    ROS_INFO("lookahead distance:%f", cutoff_dist);
     ROS_INFO("max_ttc: %f", max_ttc);
     ROS_INFO("solver_time: %d", solver_time);
     ROS_INFO("obey_time:%d", int(obey_time));
@@ -497,6 +501,34 @@ public:
     return false;
   } 
 
+  /**
+   * deadlock detection function
+   *
+   * detect deadlock on the basis of 3 conditions existing simultaneously:
+   * condition 1: being closer than 1.5 meters to at least 2 cars
+   * condition 2: time_error (time lag from expected plan) greater than 3 seconds
+   * condition 3: time_error_rate (rate of change of time_error) greater than 1 second per second. 
+  */
+  bool deadlock_detected(float dist_error)
+  {
+    float time_error = dist_error/speed_lim; // convert distance error to temporal error. 
+    float time_error_rate = 1000*(time_error - last_time_error)/(solver_time); // seconds of delay gained per second
+    last_time_error = time_error;
+    int contact = 0;
+    for(int i = 0; i < count; i++)
+    {
+      float separation = (agents[own_index].prob->params.x_0.head(2) - agents[i].prob->params.x_0.head(2)).norm();
+      if(i != own_index and separation < 1.5)
+      {
+        contact++;
+      }
+    }
+    if(contact>=2 and time_error > 3 and time_error_rate > 1)
+    {
+      return true;
+    }
+    return false;
+  }
 
   /**
    * local planner
@@ -583,7 +615,7 @@ public:
           agents[own_index].prob->params.vel_limit = speed_lim + delta_speed; //set the new speed limit 
           agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-(speed_lim + delta_speed), -steer_limit) : Eigen::Vector2f(0, -steer_limit); // set the upper and lower bound corresponding to this limit
           agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim + delta_speed,steer_limit);
-          if(dist_error > 2)
+          if(deadlock_detected(dist_error))
           {
             ROS_INFO("DEADLOCK DETECTED");
           }
