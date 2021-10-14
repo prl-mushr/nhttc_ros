@@ -51,7 +51,7 @@ for i in range(8):
     pub.append(publisher)
     goal_pub.append(goal_publisher)
 
-time.sleep(3)  # give some time for the code to initialize.
+time.sleep(2)  # give some time for the code to initialize.
 
 now = rospy.Time.now()
 cur_pose = PoseWithCovarianceStamped()

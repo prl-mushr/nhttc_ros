@@ -1,6 +1,6 @@
 sim: true
 carrot_goal_ratio: 0.2
-max_ttc: 1.0
+max_ttc: 2.0
 solver_time: 20
 obey_time: true
 allow_reverse: false
