@@ -56,6 +56,8 @@ public:
   bool reconfigure_index_found = false;
   bool push_configuration;
   bool destination_reached = false;
+  bool deadlock_solve = false;
+  bool deadlock_flag = false;
   Eigen::Vector2f mode_switch_pos;
   int reconfigure_index;
   float push_limit_radius;
@@ -120,8 +122,9 @@ public:
     x_o[2] = rpy[2];
     if(simulation)
     {
-      x_o[0] -= 0.15*cosf(x_o[2]);
-      x_o[1] -= 0.15*sinf(x_o[2]);
+      float dist = agents[i].prob->params.radius;
+      x_o[0] -= dist*cosf(x_o[2]);
+      x_o[1] -= dist*sinf(x_o[2]);
     }
     agents[i].SetEgo(x_o);
   }
@@ -186,6 +189,7 @@ public:
     steer_limit = 0.1*M_PI;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
+    agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim, steer_limit);
     ROS_INFO("parameters updated!");
   }
 
@@ -268,6 +272,7 @@ public:
     output_msg.pose.position.x = agents[own_index].goal[0];
     output_msg.pose.position.y = agents[own_index].goal[1];
     output_msg.pose.position.z = float(destination_reached); // 1 if goal reached
+    output_msg.pose.orientation.x = float(deadlock_flag);
     viz_pub.publish(output_msg);
   }
 
@@ -407,6 +412,10 @@ public:
     {
       speed_lim = 0.4;
     }
+    if(not nh.getParam("/deadlock_solve", deadlock_solve))
+    {
+      deadlock_solve = false; // false by default
+    }
     speed_lim = std::min(speed_lim, 1.0f); // gotta limit speed to 1 m/s. Lets not push our luck to far!
     delivery_tolerance = delivery_tolerance > 0.01 ? delivery_tolerance : 0.01;
 
@@ -449,7 +458,7 @@ public:
       steer_limit = atanf(wheelbase/push_limit_radius);
     }
     float car_radius = 0.2f;
-    agents[own_index].prob->params.radius = push_configuration ? 0.1 + car_radius: car_radius;
+    agents[own_index].prob->params.radius = push_configuration ? 0.15 + car_radius: car_radius;
     agents[own_index].prob->params.safety_radius = safety_radius;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.vel_limit = speed_lim;
@@ -473,6 +482,7 @@ public:
     ROS_INFO("Max steering_angle, %f", steer_limit*57.3);
     ROS_INFO("delivery_tolerance, %f cm", delivery_tolerance*100);
     ROS_INFO("speed_limit: %f m/s", speed_lim);
+    ROS_INFO("deadlock_solve: %d", int(deadlock_solve));
   }
 
   /**
@@ -530,6 +540,33 @@ public:
     return false;
   }
 
+  /*
+  * function that tries to solve the deadlock
+  * this function should only be called after the parameters have been set by the main code because it will reset them. 
+  * So it is necessary that the parameters set here be updated every control cycle in the main loop.
+  *
+  */
+  void solve_deadlock()
+  {
+    return;
+    if(not deadlock_solve)
+    {
+      return;
+    }
+    // agents[own_index].prob->params.steer_limit = 0.1*M_PI; // very large swing
+    // agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -0.1*M_PI) : Eigen::Vector2f(0, -0.1*M_PI);
+    // agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim, 0.1*M_PI);
+    for(int i=0;i<count;i++)
+    {
+      if(i != own_index)
+      {
+        agents[i].prob->params.u_curr[0] = 0.1;
+      }
+    }
+    // cutoff_dist = (carrot_goal_ratio*turning_radius*2) + agents[own_index].prob->params.radius;
+    obstacles = BuildObstacleList(agents);
+    agents[own_index].SetObstacles(obstacles, size_t(own_index)); // set the obstacles
+  }
   /**
    * local planner
    *
@@ -612,12 +649,20 @@ public:
           float dist_error = time_point_dist - virtual_dist; // error between the expected distance-to-go and the actual distance-to-go
           // I can detect a stall from the dist_error*10. 
           float delta_speed = std::min(std::max(dist_error*10,-speed_lim),speed_lim*2); // a Proportional controller for changing the speed with some min-max limits
+          // setting up the parameters for timing. This also resets the parameters as soon as the deadlock is gone.
           agents[own_index].prob->params.vel_limit = speed_lim + delta_speed; //set the new speed limit 
+          agents[own_index].prob->params.steer_limit = steer_limit; 
           agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-(speed_lim + delta_speed), -steer_limit) : Eigen::Vector2f(0, -steer_limit); // set the upper and lower bound corresponding to this limit
           agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim + delta_speed,steer_limit);
+          
+          deadlock_flag = false;
+          // cutoff_dist = (carrot_goal_ratio*turning_radius) + agents[own_index].prob->params.radius;
           if(deadlock_detected(dist_error))
           {
             ROS_INFO("DEADLOCK DETECTED");
+            deadlock_flag = true;
+            viz_publish();
+            solve_deadlock();
           }
         }
 

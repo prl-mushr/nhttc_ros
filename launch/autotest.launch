@@ -6,7 +6,7 @@
  <arg default="car3" name="car3_name"/>
  <arg default="car4" name="car4_name"/>
  <arg default="clcbs_data_2" name="bag_name"/>
- <arg default="clcbs_data_2_test1" name="record_name"/>
+ <arg default="clcbs_data_2_test20" name="record_name"/>
  <!-- Set to 1 if you want to run the map_server -->
  <arg name="map_server" value="1"/>
  <!-- Launch  map server-->

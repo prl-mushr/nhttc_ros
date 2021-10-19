@@ -24,11 +24,11 @@ def adjust_launch_file(filename, i):
     with open(filename, 'w') as f:
         f.write(output)
 
-def adjust_rosparams(i):
+def adjust_rosparams(i, N):
     ## do something using i if you want.
     rospy.set_param('sim', True)
     rospy.set_param('carrot_goal_ratio', 0.2)
-    rospy.set_param('max_ttc', 2.0)
+    rospy.set_param('max_ttc', 0.5)
     rospy.set_param('solver_time', 20)
     rospy.set_param('obey_time', True)
     rospy.set_param('allow_reverse', False)
@@ -38,6 +38,10 @@ def adjust_rosparams(i):
     rospy.set_param('push_limit_radius', 1.82)
     rospy.set_param('delivery_tolerance', 0.1)
     rospy.set_param('speed_lim', 0.4)
+    if(i < N/2):
+        rospy.set_param("deadlock_solve", False)
+    else:
+        rospy.set_param("deadlock_solve", True)
 
 ## this helps us track whether the launch file has been completely shut down yet or not
 process_generate_running = True
@@ -46,27 +50,31 @@ class ProcessListener(roslaunch.pmon.ProcessListener):
 
     def process_died(self, name, exit_code):
         global process_generate_running  # set this variable to false when process has died cleanly.
-        if(name[:11] != "rosbag_play" and name[:13] != "rosbag_record"):
+        if(name[:11] != "rosbag_play" and name[:13] != "rosbag_record"):  # prevent these guys from killing the whole process
             process_generate_running = False
             rospy.logwarn("%s died with code %s", name, exit_code)
 
 finished = np.zeros(4)  # storing goal-reach status of each car
 def fin_callback(msg, i):  # callback for the same
     global finished
+    global deadlock
     finished[i] = msg.pose.position.z  # nhttc sets it to 1 when it has reached goal
-
+    if(msg.pose.orientation.x and deadlock[i] == 0): # did we face a deadlock?
+        deadlock[i] = 1
 for i in range(4):
     subscriber = rospy.Subscriber("/car" + str(i + 1) + "/cur_goal", PoseStamped, fin_callback, i)  # subscriber
 
-N = 2
+N = 4
+timeout = 60  # 60 second time out
 success = np.zeros(N)
+recovery = np.zeros((N//2,2))
 launchfile = "/home/stark/catkin_mushr/src/nhttc_ros/launch/autotest.launch"
 param_file = "/home/stark/catkin_mushr/src/nhttc_ros/config/autotest.yaml"
 for i in range(N):
     print("iteration " + str(i) + "starting")
 
     adjust_launch_file(launchfile, i)
-    adjust_rosparams(i)
+    adjust_rosparams(i,N)
 
     process_generate_running = True
     uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
@@ -75,19 +83,30 @@ for i in range(N):
                                               [launchfile],
                                               process_listeners=[ProcessListener()])
     launch.start()  # launch the damn thing
-
+    time.sleep(10)  # time it takes for the whole thing to boot into existence
     start_time = time.time()  # note the start time
     finished = np.zeros(4)  # reset the finished status
-    while(finished.all() != 1 and time.time() - start_time < 50):
+    deadlock = np.zeros(4)
+    while(finished.all() != 1 and time.time() - start_time < timeout):
         rospy.sleep(1) # check once per second if all cars have reached their goal or if we have time-out
     if(finished.all() != 1):  # happens if the cars don't finish within some stipulated time, usually due to deadlock
         success[i] = 0 # failure
     else:
         success[i] = 1 # success
+    if( i >= N//2):
+        # cases where we are using a recovery method
+        if(deadlock.all()):
+            recovery[i-N//2,0] = success[i]
+            recovery[i-N//2,1] = 1  # indicate that it was indeed a deadlock
     launch.shutdown()
     while(process_generate_running):
         rospy.sleep(1)
     print("waiting 5 seconds for clean exit")
     time.sleep(5)
 
-print(np.mean(success)*100.0)
+print("success rate without deadlock solving (measure of deadlock prevention): ",np.mean(success[:N//2])*100.0, "%")
+print("success rate with deadlock solving (measure of deadlock cure): ", np.mean(success[N//2:])*100.0,"%")
+
+deadlock_recovery_rate = recovery[np.where(recovery[:,1]),0].mean()*100
+print(recovery)
+print("deadlock recovery rate: ", deadlock_recovery_rate, "%")
