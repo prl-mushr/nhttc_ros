@@ -11,6 +11,8 @@
 #include <sstream>
 #include "nhttc_interface.h"
 #include <boost/algorithm/string.hpp>
+#include <random>
+#include <chrono>
 
 /**
  * nhttc_ros class.
@@ -58,10 +60,12 @@ public:
   bool destination_reached = false;
   bool deadlock_solve = false;
   bool deadlock_flag = false;
+  float add_noise = 0;
   Eigen::Vector2f mode_switch_pos;
   int reconfigure_index;
   float push_limit_radius;
-  float last_time_error = 0;
+  float last_time_error = 0, time_error_rate=0;
+  float cte = 0;
 
   std::vector<TTCObstacle*> obstacles = BuildObstacleList(agents);
 
@@ -125,6 +129,18 @@ public:
       float dist = agents[i].prob->params.radius;
       x_o[0] -= dist*cosf(x_o[2]);
       x_o[1] -= dist*sinf(x_o[2]);
+      if(add_noise != 0)
+      {
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        std::default_random_engine generator (seed);
+        std::normal_distribution<double> distribution (0.0,add_noise);
+        float disp[2];
+        disp[0] = float(distribution(generator));
+        disp[1] = float(distribution(generator));
+        x_o[0] += disp[0];
+        x_o[1] += disp[1];
+      }
+
     }
     agents[i].SetEgo(x_o);
   }
@@ -273,6 +289,7 @@ public:
     output_msg.pose.position.y = agents[own_index].goal[1];
     output_msg.pose.position.z = float(destination_reached); // 1 if goal reached
     output_msg.pose.orientation.x = float(deadlock_flag);
+    output_msg.pose.orientation.y = cte;
     viz_pub.publish(output_msg);
   }
 
@@ -416,6 +433,10 @@ public:
     {
       deadlock_solve = false; // false by default
     }
+    if(not nh.getParam("/add_noise", add_noise))
+    {
+      add_noise = 0;
+    }
     speed_lim = std::min(speed_lim, 1.0f); // gotta limit speed to 1 m/s. Lets not push our luck to far!
     delivery_tolerance = delivery_tolerance > 0.01 ? delivery_tolerance : 0.01;
 
@@ -458,7 +479,7 @@ public:
       steer_limit = atanf(wheelbase/push_limit_radius);
     }
     float car_radius = 0.2f;
-    agents[own_index].prob->params.radius = push_configuration ? 0.15 + car_radius: car_radius;
+    agents[own_index].prob->params.radius = push_configuration ? 0.2 + car_radius: car_radius;
     agents[own_index].prob->params.safety_radius = safety_radius;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.vel_limit = speed_lim;
@@ -522,7 +543,7 @@ public:
   bool deadlock_detected(float dist_error)
   {
     float time_error = dist_error/speed_lim; // convert distance error to temporal error. 
-    float time_error_rate = 1000*(time_error - last_time_error)/(solver_time); // seconds of delay gained per second
+    time_error_rate = 0.1f*(1000*(time_error - last_time_error)/(solver_time)) + 0.9f*time_error_rate; // seconds of delay gained per second
     last_time_error = time_error;
     int contact = 0;
     for(int i = 0; i < count; i++)
@@ -533,7 +554,7 @@ public:
         contact++;
       }
     }
-    if(contact>=2 and time_error > 3 and time_error_rate > 1)
+    if(contact>=2 and time_error_rate > 1)
     {
       return true;
     }
@@ -623,6 +644,7 @@ public:
         agents[own_index].SetEgo(agent_state); // This is such a bad way of doing things. No semaphore locks. What if the callback changes the value right after this line? #POSSIBLE BUG
 
         Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
+        cte = fabs(wp_vec[0]*head_vec[1] - wp_vec[1]*head_vec[0]);  //cross track error for measurement purposes.
         float multiplier = fabs(wp_vec.dot(head_vec));
         float dist = multiplier; //distance from goal wp.
         // now search for the nearest waypoint thats still ahead of me.

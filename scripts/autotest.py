@@ -38,7 +38,8 @@ def adjust_rosparams(i, N):
     rospy.set_param('push_limit_radius', 1.82)
     rospy.set_param('delivery_tolerance', 0.1)
     rospy.set_param('speed_lim', 0.4)
-    if(i < N/2):
+    rospy.set_param('add_noise', 0)
+    if(i < N//2):
         rospy.set_param("deadlock_solve", False)
     else:
         rospy.set_param("deadlock_solve", True)
@@ -54,20 +55,38 @@ class ProcessListener(roslaunch.pmon.ProcessListener):
             process_generate_running = False
             rospy.logwarn("%s died with code %s", name, exit_code)
 
+def pose_callback(msg,i):
+    global car_poses
+    global collision
+    car_poses[i,0] = msg.pose.position.x
+    car_poses[i,1] = msg.pose.position.y
+    for j in range(4):
+        dist = np.linalg.norm(car_poses[i,:] - car_poses[j,:])
+        if(dist < 0.3 and j != i):
+            collision = True
+            break
+
+car_poses = np.zeros((4,2))
 finished = np.zeros(4)  # storing goal-reach status of each car
 def fin_callback(msg, i):  # callback for the same
     global finished
     global deadlock
+    global cte
     finished[i] = msg.pose.position.z  # nhttc sets it to 1 when it has reached goal
     if(msg.pose.orientation.x and deadlock[i] == 0): # did we face a deadlock?
         deadlock[i] = 1
+    if(finished[i]):
+        cte[i] = msg.pose.orientation.y
 for i in range(4):
     subscriber = rospy.Subscriber("/car" + str(i + 1) + "/cur_goal", PoseStamped, fin_callback, i)  # subscriber
+    subscriber_ = rospy.Subscriber("/car" + str(i + 1) + "/car_pose", PoseStamped, pose_callback, i)  # subscribe to car-pose to check collisions
 
-N = 4
-timeout = 60  # 60 second time out
+N = 20
+timeout = 70  # 60 second time out
 success = np.zeros(N)
 recovery = np.zeros((N//2,2))
+CTE_list = np.zeros(N)
+collision_log = np.zeros(N)
 launchfile = "/home/stark/catkin_mushr/src/nhttc_ros/launch/autotest.launch"
 param_file = "/home/stark/catkin_mushr/src/nhttc_ros/config/autotest.yaml"
 for i in range(N):
@@ -87,17 +106,22 @@ for i in range(N):
     start_time = time.time()  # note the start time
     finished = np.zeros(4)  # reset the finished status
     deadlock = np.zeros(4)
+    cte = np.zeros(4)
+    collision = False
     while(finished.all() != 1 and time.time() - start_time < timeout):
         rospy.sleep(1) # check once per second if all cars have reached their goal or if we have time-out
-    if(finished.all() != 1):  # happens if the cars don't finish within some stipulated time, usually due to deadlock
+    if(finished.all() != 1 or collision):  # happens if the cars don't finish within some stipulated time, usually due to deadlock
         success[i] = 0 # failure
+        CTE_list[i] = -1  # invalid
     else:
-        success[i] = 1 # success
+        success[i] = (not collision) # success if not collision
+        CTE_list[i] = cte.mean()
     if( i >= N//2):
         # cases where we are using a recovery method
         if(deadlock.all()):
             recovery[i-N//2,0] = success[i]
             recovery[i-N//2,1] = 1  # indicate that it was indeed a deadlock
+    collision_log[i] = collision
     launch.shutdown()
     while(process_generate_running):
         rospy.sleep(1)
@@ -110,3 +134,5 @@ print("success rate with deadlock solving (measure of deadlock cure): ", np.mean
 deadlock_recovery_rate = recovery[np.where(recovery[:,1]),0].mean()*100
 print(recovery)
 print("deadlock recovery rate: ", deadlock_recovery_rate, "%")
+print("CTE per run in meters: ", CTE_list);
+print("collision_log: ", collision_log)
