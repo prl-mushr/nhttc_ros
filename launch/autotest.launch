@@ -6,8 +6,9 @@
  <arg default="car3" name="car3_name"/>
  <arg default="car4" name="car4_name"/>
  <arg default="clcbs_data_2" name="bag_name"/>
- <arg default="clcbs_data_2_test20" name="record_name"/>
+ <arg default="clcbs_data_2_test100" name="record_name"/>
  <!-- Set to 1 if you want to run the map_server -->
+ <node args="-q -a -o $(find nhttc_ros)/bags/$(arg record_name).bag" name="rosbag_record" output="screen" pkg="rosbag" type="record"/>
  <arg name="map_server" value="1"/>
  <!-- Launch  map server-->
  <group if="$(arg map_server)">
@@ -57,5 +58,4 @@
  </group>
  <node name="initializer" pkg="nhttc_ros" type="nhttc_pose_init"/>
  <node args="-q -r 0.5 $(find nhttc_ros)/bags/$(arg bag_name).bag" name="rosbag_play" output="screen" pkg="rosbag" type="play"/>
- <node args="-q -a -o $(find nhttc_ros)/bags/$(arg record_name).bag" name="rosbag_record" output="screen" pkg="rosbag" type="record"/>
 </launch>

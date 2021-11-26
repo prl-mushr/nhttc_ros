@@ -60,13 +60,15 @@ public:
   bool destination_reached = false;
   bool deadlock_solve = false;
   bool deadlock_flag = false;
+  bool nhttc_standalone = false;
+  bool pure_pursuit = false;
   float add_noise = 0;
   Eigen::Vector2f mode_switch_pos;
   int reconfigure_index;
   float push_limit_radius;
   float last_time_error = 0, time_error_rate=0;
-  float cte = 0;
-
+  float cte = 0, cte_final, max_time_error_rate = 0; // diagnostics variables
+  float time_error_thresh;
   std::vector<TTCObstacle*> obstacles = BuildObstacleList(agents);
 
   std::vector<Eigen::Vector2f> waypoints;
@@ -289,7 +291,8 @@ public:
     output_msg.pose.position.y = agents[own_index].goal[1];
     output_msg.pose.position.z = float(destination_reached); // 1 if goal reached
     output_msg.pose.orientation.x = float(deadlock_flag);
-    output_msg.pose.orientation.y = cte;
+    output_msg.pose.orientation.y = cte_final;
+    output_msg.pose.orientation.z = max_time_error_rate;
     viz_pub.publish(output_msg);
   }
 
@@ -437,6 +440,18 @@ public:
     {
       add_noise = 0;
     }
+    if(not nh.getParam("/time_error_thresh", time_error_thresh))
+    {
+      time_error_thresh = 0.1f;
+    }
+    if(not nh.getParam("/nhttc_standalone", nhttc_standalone))
+    {
+      nhttc_standalone = false;
+    }
+    if(not nh.getParam("/pure_pursuit", pure_pursuit))
+    {
+      pure_pursuit = false;
+    }
     speed_lim = std::min(speed_lim, 1.0f); // gotta limit speed to 1 m/s. Lets not push our luck to far!
     delivery_tolerance = delivery_tolerance > 0.01 ? delivery_tolerance : 0.01;
 
@@ -532,6 +547,43 @@ public:
     return false;
   } 
 
+  /*
+  pure_pursuit controller for setting baseline
+  */
+  void pure_pursuit_controller(float &speed, float &steering)
+  {
+    if(!pure_pursuit or !goal_received)
+    {
+      return;
+    }
+    if(destination_reached)
+    {
+      speed = 0;
+    }
+    else
+    {  
+      speed = agents[own_index].prob->params.vel_limit;   // set this as the speed limit found by the timing code.
+    }
+    Eigen::VectorXf agent_state = agents[own_index].prob->params.x_0; //get agent's current state
+    Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector
+    Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2));
+    // pure pursuit controller. Ref: https://www.ri.cmu.edu/pub_files/pub3/coulter_r_craig_1992_1/coulter_r_craig_1992_1.pdf
+    float x = wp_vec[1]*head_vec[0] - wp_vec[0]*head_vec[1];
+    float l2 = wp_vec.norm();
+    l2 *= l2;  // square up mfs
+    float k = 2 * x / l2;  // curvature
+    steering = atanf(wheelbase*k);
+
+    if(steering > steer_limit)
+    {
+      steering = steer_limit;
+    }
+    if(steering < -steer_limit)
+    {
+      steering = -steer_limit;
+    }
+  } 
+
   /**
    * deadlock detection function
    *
@@ -554,7 +606,7 @@ public:
         contact++;
       }
     }
-    if(contact>=2 and time_error_rate > 1)
+    if(contact>=1 and time_error_rate > time_error_thresh)
     {
       return true;
     }
@@ -569,22 +621,20 @@ public:
   */
   void solve_deadlock()
   {
-    return;
     if(not deadlock_solve)
     {
       return;
     }
-    // agents[own_index].prob->params.steer_limit = 0.1*M_PI; // very large swing
-    // agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -0.1*M_PI) : Eigen::Vector2f(0, -0.1*M_PI);
-    // agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim, 0.1*M_PI);
+    agents[own_index].prob->params.steer_limit = 0.1*M_PI; // very large swing
+    agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -0.1*M_PI) : Eigen::Vector2f(0, -0.1*M_PI);
+    agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim, 0.1*M_PI);
     for(int i=0;i<count;i++)
     {
       if(i != own_index)
       {
-        agents[i].prob->params.u_curr[0] = 0.1;
+        agents[i].prob->params.u_curr[0] = std::max(0.2f,agents[i].prob->params.u_curr[0]); // max of true and hallucinated speed.
       }
     }
-    // cutoff_dist = (carrot_goal_ratio*turning_radius*2) + agents[own_index].prob->params.radius;
     obstacles = BuildObstacleList(agents);
     agents[own_index].SetObstacles(obstacles, size_t(own_index)); // set the obstacles
   }
@@ -610,6 +660,11 @@ public:
       if(goal_received)
       { 
         // Find distance to current nhttc waypoint
+        if(nhttc_standalone)
+        {
+            current_wp_index = max_index-1;
+            agents[own_index].goal = waypoints[current_wp_index];
+        }
         if(not reconfigure_index_found)
         {
           get_reconfigure_index();
@@ -645,6 +700,7 @@ public:
 
         Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
         cte = fabs(wp_vec[0]*head_vec[1] - wp_vec[1]*head_vec[0]);  //cross track error for measurement purposes.
+        cte_final = (waypoints[max_index-1] - agent_state.head(2)).norm();
         float multiplier = fabs(wp_vec.dot(head_vec));
         float dist = multiplier; //distance from goal wp.
         // now search for the nearest waypoint thats still ahead of me.
@@ -678,13 +734,16 @@ public:
           agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim + delta_speed,steer_limit);
           
           deadlock_flag = false;
-          // cutoff_dist = (carrot_goal_ratio*turning_radius) + agents[own_index].prob->params.radius;
           if(deadlock_detected(dist_error))
           {
             ROS_INFO("DEADLOCK DETECTED");
             deadlock_flag = true;
             viz_publish();
             solve_deadlock();
+          }
+          if(not deadlock_flag and current_wp_index > 2 and current_wp_index < max_index-1) // prevent updation if in deadlock or just started moving or about to halt
+          {
+            max_time_error_rate = max_time_error_rate*0.9 + (dist_error/speed_lim)*0.1; // running average of sorts.
           }
         }
 
@@ -735,6 +794,7 @@ public:
       controls[0] = push_configuration ? std::max(0.0f, controls[0]) : controls[0];
       float speed = controls[0]; //speed in m/s
       float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right
+      pure_pursuit_controller(speed,steering_angle);  // call this function to make use of pure pursuit code
       send_commands(speed,steering_angle); //just sending out anything for now;
       return;
     }
