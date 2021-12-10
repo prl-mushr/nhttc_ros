@@ -18,8 +18,8 @@ def adjust_launch_file(filename, i):
     bs_data = bs(data, 'xml')
     bag_name = bs_data.find("arg", {"name":"bag_name"})
     rec_name = bs_data.find("arg", {"name":"record_name"})
-    bag_name["default"] = "clcbs_data_2"  # can put custom name according to "i" here
-    rec_name["default"] = "clcbs_data_2_test"+str(i+1)
+    bag_name["default"] = "clcbs_data_"+str(i%10)  # can put custom name according to "i" here
+    rec_name["default"] = "clcbs_data_test_"+str(i+1)
 
     output = bs_data.prettify()  # prettify doesn't actually make it prettier. 
     with open(filename, 'w') as f:
@@ -28,7 +28,7 @@ def adjust_launch_file(filename, i):
 def adjust_rosparams(i, N):
     ## do something using i if you want.
     rospy.set_param('sim', True)
-    rospy.set_param('carrot_goal_ratio', 0.5)
+    rospy.set_param('carrot_goal_ratio', 1.0)
     rospy.set_param('max_ttc', 1.5)  # settingthis to 0 should make the nhttc system behave like a oblivious tracker in theory
     rospy.set_param('solver_time', 20)
     rospy.set_param('obey_time', True)  # set this to false if testing nhttc standalone
@@ -40,10 +40,10 @@ def adjust_rosparams(i, N):
     rospy.set_param('delivery_tolerance', 0.1)
     rospy.set_param('speed_lim', 0.4)
     rospy.set_param('add_noise', 0)
-    rospy.set_param("deadlock_solve", False)  # setting this to false when not using deadlock solvers
-    rospy.set_param("time_error_thresh", 0.1)
+    rospy.set_param("deadlock_solve", True)  # setting this to false when not using deadlock solvers
+    rospy.set_param("time_error_thresh", 0.3)
     rospy.set_param("nhttc_standalone", False)  # do not set to true if max_ttc is also true
-    rospy.set_param("pure_pursuit", True)
+    rospy.set_param("pure_pursuit", False)
 
 ## this helps us track whether the launch file has been completely shut down yet or not
 process_generate_running = True
@@ -66,13 +66,17 @@ def pose_callback(msg,i):
     car_poses[i,1] = msg.pose.position.y
     for j in range(4):
         dist = np.linalg.norm(car_poses[i,:] - car_poses[j,:])
-        if(dist < 0.45 and j != i):
+        if(dist < 0.4 and j != i):
             collision = True
         if(min_dist > dist and j!=i):
             min_dist = dist  # keep track of min distance between any 2 cars
 
 car_poses = np.zeros((4,2))
 finished = np.zeros(4)  # storing goal-reach status of each car
+deadlock = np.zeros(4)
+time_error = np.zeros(4)
+cte = np.zeros(4)
+collision = False
 def fin_callback(msg, i):  # callback for the same
     global finished
     global deadlock
@@ -83,7 +87,8 @@ def fin_callback(msg, i):  # callback for the same
         deadlock[i] = 1
     if(finished[i]):
         cte[i] = msg.pose.orientation.y
-        time_error[i] = msg.pose.orientation.z
+    time_error[i] = msg.pose.orientation.z  # keep updating time error until timeout
+
 
 for i in range(4):
     subscriber = rospy.Subscriber("/car" + str(i + 1) + "/cur_goal", PoseStamped, fin_callback, i)  # subscriber
@@ -153,6 +158,12 @@ print("collision_log: ", collision_log)
 # print("time_error:", time_list)
 L = N//10
 prob_dist = np.zeros((L, 6))
+raw_data = []
+raw_data.append(success)
+raw_data.append(collision_log)
+raw_data.append(CTE_list)
+raw_data.append(time_list)
+raw_data.append(min_dist_list)
 for i in range(L):
     prob_dist[i, 0] = success[L*i:L*(i+1)].mean()
     prob_dist[i, 1] = collision_log[L*i:L*(i+1)].mean()
@@ -160,8 +171,10 @@ for i in range(L):
     prob_dist[i, 3] = CTE_list[L*i:L*(i+1)].mean()
     prob_dist[i, 4] = time_list[L*i:L*(i+1)].mean()
     prob_dist[i, 5] = min_dist_list[L*i:L*(i+1)].mean()
-np.save("/home/stark/catkin_mushr/src/nhttc_ros/bags/output.npy", prob_dist)
-prob_dist = np.load("/home/stark/catkin_mushr/src/nhttc_ros/bags/output.npy", allow_pickle=True)
+np.save("/home/stark/catkin_mushr/src/nhttc_ros/bags/output_bags/output.npy", prob_dist)
+np.save("/home/stark/catkin_mushr/src/nhttc_ros/bags/output_bags/output_raw.npy", raw_data)
+
+prob_dist = np.load("/home/stark/catkin_mushr/src/nhttc_ros/bags/output_bags/output.npy", allow_pickle=True)
 print(prob_dist)
 X = np.arange(0, 100, 10)
 plt.suptitle("performance with ideal parameters")

@@ -69,6 +69,7 @@ public:
   float last_time_error = 0, time_error_rate=0;
   float cte = 0, cte_final, max_time_error_rate = 0; // diagnostics variables
   float time_error_thresh;
+  float time_ratio = 0;
   std::vector<TTCObstacle*> obstacles = BuildObstacleList(agents);
 
   std::vector<Eigen::Vector2f> waypoints;
@@ -292,7 +293,7 @@ public:
     output_msg.pose.position.z = float(destination_reached); // 1 if goal reached
     output_msg.pose.orientation.x = float(deadlock_flag);
     output_msg.pose.orientation.y = cte_final;
-    output_msg.pose.orientation.z = max_time_error_rate;
+    output_msg.pose.orientation.z = time_ratio;
     viz_pub.publish(output_msg);
   }
 
@@ -493,14 +494,24 @@ public:
     {
       steer_limit = atanf(wheelbase/push_limit_radius);
     }
-    float car_radius = 0.2f;
-    agents[own_index].prob->params.radius = push_configuration ? 0.2 + car_radius: car_radius;
-    agents[own_index].prob->params.safety_radius = safety_radius;
-    agents[own_index].prob->params.steer_limit = steer_limit;
-    agents[own_index].prob->params.vel_limit = speed_lim;
-    agents[own_index].prob->params.u_lb = allow_reverse && !(push_reconfigure) ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
-    agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim,steer_limit);
-    agents[own_index].prob->params.max_ttc = max_ttc;
+    float car_radius = 0.25f;
+    // agents[own_index].prob->params.radius = push_configuration ? 0.2 + car_radius: car_radius;
+    // agents[own_index].prob->params.safety_radius = safety_radius;
+    // agents[own_index].prob->params.steer_limit = steer_limit;
+    // agents[own_index].prob->params.vel_limit = speed_lim;
+    // agents[own_index].prob->params.u_lb = allow_reverse && !(push_reconfigure) ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
+    // agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim,steer_limit);
+    // agents[own_index].prob->params.max_ttc = max_ttc;
+    for(int i = 0; i < count; i++)
+    {
+      agents[i].prob->params.radius = car_radius;
+      agents[i].prob->params.safety_radius = safety_radius;
+      agents[i].prob->params.steer_limit = steer_limit;
+      agents[i].prob->params.vel_limit = speed_lim;
+      agents[i].prob->params.u_lb = allow_reverse && !(push_reconfigure) ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
+      agents[i].prob->params.u_ub = Eigen::Vector2f(speed_lim,steer_limit);
+      agents[i].prob->params.max_ttc = max_ttc;
+    }
     turning_radius = wheelbase/tanf(fabs(steer_limit_default));
     fabs(steer_limit) == 0 ? cutoff_dist = 1.0 : cutoff_dist = carrot_goal_ratio*turning_radius; 
     cutoff_dist += agents[own_index].prob->params.radius;
@@ -664,6 +675,7 @@ public:
         {
             current_wp_index = max_index-1;
             agents[own_index].goal = waypoints[current_wp_index];
+            time_index = max_index-1;
         }
         if(not reconfigure_index_found)
         {
@@ -692,15 +704,18 @@ public:
           }
         }
 
-        if(current_wp_index == reconfigure_index)
-        {
-          agent_state.head(2) -= wheelbase*head_vec;
-        }
         agents[own_index].SetEgo(agent_state); // This is such a bad way of doing things. No semaphore locks. What if the callback changes the value right after this line? #POSSIBLE BUG
 
         Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
         cte = fabs(wp_vec[0]*head_vec[1] - wp_vec[1]*head_vec[0]);  //cross track error for measurement purposes.
-        cte_final = (waypoints[max_index-1] - agent_state.head(2)).norm();
+        if(simulation)
+        {
+          cte_final = (waypoints[max_index-1] - (agent_state.head(2) + agents[own_index].prob->params.radius*Eigen::Vector2f(cosf(agent_state[2]), sinf(agent_state[2])) ) ).norm();  // final cross track error ##METRIC
+        }
+        else
+        {
+          cte_final = (waypoints[max_index-1] - (agent_state.head(2))).norm();
+        }
         float multiplier = fabs(wp_vec.dot(head_vec));
         float dist = multiplier; //distance from goal wp.
         // now search for the nearest waypoint thats still ahead of me.
@@ -708,7 +723,7 @@ public:
         Eigen::Vector2f tp_vec = (waypoints[time_index] - agent_state.head(2)); // tp: time point
         multiplier = fabs(tp_vec.dot(head_vec));
         float time_point_dist = multiplier; // removed the multiplier here, because in if the waypoints are intentionally behind the car, this would just skip them. we don't want that.
-        if(time_point_dist < agents[own_index].prob->params.safety_radius)
+        if(time_point_dist < 0.1f)  // there should be an additional condition that prevents time index from being less than waypoint index
         {
           time_index++;
           time_viz_publish();
@@ -718,10 +733,11 @@ public:
           time_point_dist = multiplier;
         }
 
+        float current_time = float((ros::Time::now() - begin).toSec()); //the current time relative to the time at which the plans were published.
+        cur_time_stamp = time_stamps[time_index];  // time stamp by which the car must arrive at the time-waypoint. The time waypoint is simply the next closest waypoint in the plan.
+
         if(obey_time)
         {
-          float current_time = float((ros::Time::now() - begin).toSec()); //the current time relative to the time at which the plans were published.
-          cur_time_stamp = time_stamps[time_index];  // time stamp by which the car must arrive at the time-waypoint. The time waypoint is simply the next closest waypoint in the plan.
           float delta_time = cur_time_stamp - current_time; //time left to reach the time-waypoint
           float virtual_dist = delta_time*speed_lim; // distance from the time-waypoint at which the car should be if it had to travel at the default speed
           float dist_error = time_point_dist - virtual_dist; // error between the expected distance-to-go and the actual distance-to-go
@@ -743,9 +759,10 @@ public:
           }
           if(not deadlock_flag and current_wp_index > 2 and current_wp_index < max_index-1) // prevent updation if in deadlock or just started moving or about to halt
           {
-            max_time_error_rate = max_time_error_rate*0.9 + (dist_error/speed_lim)*0.1; // running average of sorts.
+            max_time_error_rate = max_time_error_rate*0.9 + (dist_error/speed_lim)*0.1; // running average of sorts. ##METRIC
           }
         }
+        time_ratio = current_time/cur_time_stamp; // ratio of the actual time over expected time at any point in time #METRIC
 
         if(do_skip_waypoint(wp_vec,agent_state[2]) and current_wp_index < max_index - 1) //second condition is to ensure it doesn't finess the last waypoint
         {
@@ -776,10 +793,10 @@ public:
           }
           else
           {
+            agents[own_index].prob->params.safety_radius = 0;
             controls = agents[own_index].UpdateControls(); // in case it is the final waypoint, keep going until dist-to-go is less than wheelbase
-            current_wp_index = std::min(max_index, current_wp_index + 1);
-            ROS_INFO("dist %f", dist);
-            if(current_wp_index >= max_index-1 and dist < delivery_tolerance + agents[own_index].prob->params.radius)
+
+            if(current_wp_index >= max_index-1 and dist < agents[own_index].prob->params.radius)
             {
               controls[0] = 0;
               controls[1] = 0;

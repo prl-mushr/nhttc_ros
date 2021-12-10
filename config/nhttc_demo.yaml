@@ -1,5 +1,5 @@
 sim: true
-carrot_goal_ratio: 0.5
+carrot_goal_ratio: 1.0
 max_ttc: 1.5
 solver_time: 20
 obey_time: true
