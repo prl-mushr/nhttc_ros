@@ -62,6 +62,7 @@ public:
   bool deadlock_flag = false;
   bool nhttc_standalone = false;
   bool pure_pursuit = false;
+  bool nhttc_speed_only = false;
   float add_noise = 0;
   Eigen::Vector2f mode_switch_pos;
   int reconfigure_index;
@@ -453,6 +454,10 @@ public:
     {
       pure_pursuit = false;
     }
+    if(not nh.getParam("/nhttc_speed_only", nhttc_speed_only))
+    {
+      nhttc_speed_only = false;
+    }
     speed_lim = std::min(speed_lim, 1.0f); // gotta limit speed to 1 m/s. Lets not push our luck to far!
     delivery_tolerance = delivery_tolerance > 0.01 ? delivery_tolerance : 0.01;
 
@@ -530,6 +535,7 @@ public:
     ROS_INFO("delivery_tolerance, %f cm", delivery_tolerance*100);
     ROS_INFO("speed_limit: %f m/s", speed_lim);
     ROS_INFO("deadlock_solve: %d", int(deadlock_solve));
+    ROS_INFO("nhttc_speed_only: %d", int(nhttc_speed_only));
   }
 
   /**
@@ -571,7 +577,8 @@ public:
     {
       speed = 0;
     }
-    else
+
+    if(not nhttc_speed_only)  // don't modify speed if nhttc is being used for speed calc.
     {  
       speed = agents[own_index].prob->params.vel_limit;   // set this as the speed limit found by the timing code.
     }
@@ -605,21 +612,46 @@ public:
   */
   bool deadlock_detected(float dist_error)
   {
-    float time_error = dist_error/speed_lim; // convert distance error to temporal error. 
-    time_error_rate = 0.1f*(1000*(time_error - last_time_error)/(solver_time)) + 0.9f*time_error_rate; // seconds of delay gained per second
-    last_time_error = time_error;
-    int contact = 0;
-    for(int i = 0; i < count; i++)
+    // float time_error = dist_error/speed_lim; // convert distance error to temporal error. 
+    // time_error_rate = 0.1f*(1000*(time_error - last_time_error)/(solver_time)) + 0.9f*time_error_rate; // seconds of delay gained per second
+    // last_time_error = time_error;
+    // int contact = 0;
+    // for(int i = 0; i < count; i++)
+    // {
+    //   float separation = (agents[own_index].prob->params.x_0.head(2) - agents[i].prob->params.x_0.head(2)).norm();
+    //   if(i != own_index and separation < 1.5)
+    //   {
+    //     contact++;
+    //   }
+    // }
+    // if(contact>=1 and time_error_rate > time_error_thresh)
+    // {
+    //   return true;
+    // }
+    static ros::Time time_since_last_movement;
+    static double time_since_stuck;
+    int stuck_count = 0;
+    if(goal_received and not destination_reached)
     {
-      float separation = (agents[own_index].prob->params.x_0.head(2) - agents[i].prob->params.x_0.head(2)).norm();
-      if(i != own_index and separation < 1.5)
+      for(int i=0;i<count;i++)
       {
-        contact++;
+        float separation = (agents[own_index].prob->params.x_0.head(2) - agents[i].prob->params.x_0.head(2)).norm();
+        float speed_own = agents[own_index].prob->params.u_curr[0];
+        float speed_oth = agents[i].prob->params.u_curr[0];
+        if(i!=own_index and separation < 1.5 and speed_own < speed_lim*0.2 and speed_oth < 0.2*speed_lim)
+        { //if some other agent is close to me and both of us are moving slow as hell we probably stuck
+          stuck_count++;
+        }
       }
-    }
-    if(contact>=1 and time_error_rate > time_error_thresh)
-    {
-      return true;
+      if(stuck_count == 0)
+      {
+        time_since_last_movement = ros::Time::now();  //reset timer
+      }
+      time_since_stuck = (ros::Time::now() - time_since_last_movement).toSec();
+      if(time_since_stuck > time_error_thresh)
+      {
+        return true;
+      }
     }
     return false;
   }
