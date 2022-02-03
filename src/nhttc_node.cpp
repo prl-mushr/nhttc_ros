@@ -507,7 +507,7 @@ public:
     // agents[own_index].prob->params.u_lb = allow_reverse && !(push_reconfigure) ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
     // agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim,steer_limit);
     // agents[own_index].prob->params.max_ttc = max_ttc;
-    for(int i = 0; i < count; i++)
+    for(int i = 0; i <= count; i++)
     {
       agents[i].prob->params.radius = car_radius;
       agents[i].prob->params.safety_radius = safety_radius;
@@ -633,7 +633,7 @@ public:
     int stuck_count = 0;
     if(goal_received and not destination_reached)
     {
-      for(int i=0;i<count;i++)
+      for(int i = 0; i <= count; i++)
       {
         float separation = (agents[own_index].prob->params.x_0.head(2) - agents[i].prob->params.x_0.head(2)).norm();
         float speed_own = agents[own_index].prob->params.u_curr[0];
@@ -671,7 +671,7 @@ public:
     agents[own_index].prob->params.steer_limit = 0.1*M_PI; // very large swing
     agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -0.1*M_PI) : Eigen::Vector2f(0, -0.1*M_PI);
     agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim, 0.1*M_PI);
-    for(int i=0;i<count;i++)
+    for(int i = 0; i <= count; i++)
     {
       if(i != own_index)
       {
