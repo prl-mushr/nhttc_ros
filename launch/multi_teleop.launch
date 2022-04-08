@@ -37,7 +37,7 @@
             <arg name="racecar_color" value="-green-black" />
 
         </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller2">
             <param name="car_name" value="car2"/>
         </node>
     </group>
