@@ -10,3 +10,8 @@ push_configuration: true
 push_limit_radius: 1.82
 delivery_tolerance: 0.1
 speed_lim: 0.4
+deadlock_solve: false
+add_noise: 0  # only works in simulation
+nhttc_standalone: false  # set to false to use full system
+time_error_thresh: 0.3
+pure_pursuit: false # set to false to use full system

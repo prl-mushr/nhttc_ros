@@ -525,6 +525,7 @@ public:
       steer_limit = atanf(wheelbase/push_limit_radius);
     }
     float car_radius = 0.25f;
+
     for(int i = 0; i <=count; i++)
     {
       agents[i].prob->params.radius = car_radius;
@@ -729,7 +730,7 @@ public:
     priority_count = 0;
     if(goal_received and not destination_reached)
     {
-      for(int i=0;i<=count;i++)
+      for(int i = 0; i <= count; i++)
       {
         Eigen::VectorXf agent_state = agents[own_index].prob->params.x_0; //get agent's current state
         Eigen::VectorXf other_state = agents[i].prob->params.x_0; //get agent's current state
@@ -786,7 +787,11 @@ public:
     agents[own_index].prob->params.steer_limit = 0.1*M_PI; // very large swing
     agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -0.1*M_PI) : Eigen::Vector2f(0, -0.1*M_PI);
     agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim, 0.1*M_PI);
+<<<<<<< HEAD
     for(int i=0;i<=count;i++)
+=======
+    for(int i = 0; i <= count; i++)
+>>>>>>> ebdbcfa48cd6a77b6303883e7fe3c26579e02d12
     {
       if(i != own_index)
       {

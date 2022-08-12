@@ -2,12 +2,12 @@
     <arg name="own_name" default="car30" />
     
     <!-- Total number of cars (including self) -->
-    <arg name="car_count" default = "3"/>
+    <arg name="car_count" default = "4"/>
     
     <!-- Other car names (if car_count is 2, then nodes will read own_name, other_car1, then disregard the rest) -->
     <arg name="other_car1" default = "car38"/>
     <arg name="other_car2" default = "car39"/>
-    <arg name="other_car3" default = "car42"/>
+    <arg name="other_car3" default = "car34"/>
     <arg name="other_car4" default = "car5"/>
     <arg name="other_car5" default = "car6"/>
     <arg name="other_car6" default = "car7"/>
