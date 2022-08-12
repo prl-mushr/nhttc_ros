@@ -1,3 +1,5 @@
 numpy
 Shapely
 matplotlib
+lxml
+beautifulsoup4

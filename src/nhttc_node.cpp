@@ -22,7 +22,7 @@
 class nhttc_ros
 {
 public:
-  ros::Subscriber sub_other_pose[16],sub_other_control[16];
+  ros::Subscriber sub_other_pose[16],sub_other_control[16], sub_other_WP[16];
   ros::Subscriber sub_goal,sub_wp, sub_marker;
   ros::Publisher pub_cmd, viz_pub, time_pub;
 
@@ -74,9 +74,11 @@ public:
   std::vector<TTCObstacle*> obstacles = BuildObstacleList(agents);
 
   std::vector<Eigen::Vector2f> waypoints;
+  std::vector<Eigen::VectorXf> waypoints_gen[16];
   std::vector<float> time_stamps;
   std::vector<std::string> name_list;
-  int current_wp_index, max_index;
+  int current_wp_index, max_index, max_index_gen[16];
+  int priority_count;
 
   ros::master::V_TopicInfo master_topics;
 
@@ -220,32 +222,50 @@ public:
    *
    * @param takes the waypoint message.
    */
-  void WPCallBack(const geometry_msgs::PoseArray::ConstPtr& msg)
+  void WPCallBack_other(const geometry_msgs::PoseArray::ConstPtr& msg, int j)
   {
-    Eigen::Vector2f wp,wp_last;
+    Eigen::VectorXf wp = Eigen::VectorXf::Zero(4);
     int num = msg->poses.size();
-    waypoints.clear(); // reset
+    float q[4];
     float time_stamp=0;
-    time_stamps.clear();
-    current_wp_index = 0;
+    if(j  == own_index)
+    {
+      time_stamps.clear();
+      waypoints.clear(); // reset
+    }
     wp[0] = msg->poses[1].position.x - msg->poses[0].position.x;
     wp[1] = msg->poses[1].position.y - msg->poses[0].position.y;
-    float time_step = wp.norm()/speed_lim;
+    float time_step = (wp.head(2)).norm()/speed_lim;
     for(int i =0;i<num;i++)
     {
       wp[0] = msg->poses[i].position.x;
       wp[1] = msg->poses[i].position.y;
-      time_stamps.push_back(time_stamp);
+      q[0] = msg->poses[i].orientation.x;
+      q[1] = msg->poses[i].orientation.y;
+      q[2] = msg->poses[i].orientation.z;
+      q[3] = msg->poses[i].orientation.w;
+      wp[2] = atan2f(2.0f * (q[0] * q[1] + q[2] * q[3]),1 - 2 * (q[1] * q[1] + q[2] * q[2]));
+      wp[3] = time_stamp;
+      waypoints_gen[j].push_back(wp);
+      if(j == own_index)
+      {
+        waypoints.push_back(wp.head(2)); // so that we can maintain backwards compatibility
+        time_stamps.push_back(time_stamp); // so that we can maintain backwards compatibility
+      }
       time_stamp += (msg->poses[i].position.z*1000)*time_step;
-      waypoints.push_back(wp);
     }
-    goal_received = true;
-    goal = waypoints[current_wp_index]; 
-    agents[own_index].UpdateGoal(goal); // set the goal 
-    max_index = num;
-    cur_time_stamp = time_stamps[1];
-    time_index = 1; //reset
-    begin = ros::Time::now();// + ros::Duration(0.02); // add 0.02 seconds corresponding to the 50 hz update rate.
+    max_index_gen[j] = num; // save the generalized max index number.
+    if(j == own_index)
+    {
+      current_wp_index = 0;
+      goal = waypoints[0];
+      goal_received = true;
+      agents[own_index].UpdateGoal(goal); // set the goal 
+      max_index = num;
+      cur_time_stamp = time_stamps[1];
+      time_index = 1; //reset
+      begin = ros::Time::now();// + ros::Duration(0.02); // add 0.02 seconds corresponding to the 50 hz update rate.
+    }
   }
 
   /**
@@ -361,6 +381,11 @@ public:
               s<<strs[1];
               s<<"/mux/ackermann_cmd_mux/input/navigation";
               sub_other_control[count] = nh.subscribe<ackermann_msgs::AckermannDriveStamped>((s.str()).c_str(),10,boost::bind(&nhttc_ros::ControlCallback,this,_1,count));
+              s.str("");
+              s<<"/";
+              s<<strs[1];
+              s<<"/waypoints";
+              sub_other_WP[count] = nh.subscribe<geometry_msgs::PoseArray>((s.str()).c_str(), 10, boost::bind(&nhttc_ros::WPCallBack_other,this,_1,count));
             }
           }
         }
@@ -476,7 +501,7 @@ public:
     } // We do this once at the beginning in order to find the car belonging to our own nav controller
     // set up all the publishers/subscribers
     sub_marker = nh.subscribe("/"+self_name+"/marker",10,&nhttc_ros::MCallback,this);
-    sub_wp = nh.subscribe("/"+self_name+"/waypoints",10,&nhttc_ros::WPCallBack,this);
+    // sub_wp = nh.subscribe("/"+self_name+"/waypoints",10,&nhttc_ros::WPCallBack,this);
     pub_cmd = nh.advertise<ackermann_msgs::AckermannDriveStamped>("/"+ self_name +"/mux/ackermann_cmd_mux/input/navigation",10);
     viz_pub = nh.advertise<geometry_msgs::PoseStamped>("/"+self_name+"/cur_goal",10);
     time_pub = nh.advertise<geometry_msgs::PoseStamped>("/"+self_name+"/time_goal",10);
@@ -500,14 +525,7 @@ public:
       steer_limit = atanf(wheelbase/push_limit_radius);
     }
     float car_radius = 0.25f;
-    // agents[own_index].prob->params.radius = push_configuration ? 0.2 + car_radius: car_radius;
-    // agents[own_index].prob->params.safety_radius = safety_radius;
-    // agents[own_index].prob->params.steer_limit = steer_limit;
-    // agents[own_index].prob->params.vel_limit = speed_lim;
-    // agents[own_index].prob->params.u_lb = allow_reverse && !(push_reconfigure) ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
-    // agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim,steer_limit);
-    // agents[own_index].prob->params.max_ttc = max_ttc;
-    for(int i = 0; i < count; i++)
+    for(int i = 0; i <=count; i++)
     {
       agents[i].prob->params.radius = car_radius;
       agents[i].prob->params.safety_radius = safety_radius;
@@ -564,6 +582,31 @@ public:
     return false;
   } 
 
+  bool dtheta_dv(Eigen::VectorXf own_state, Eigen::VectorXf other_state, float Vel[2], float dt, float &d_theta_dv)
+  {
+    float theta[2];
+    float dS[2];
+    float numerator, denominator;
+    float d_theta;
+    dS[0] = Vel[0]*dt;
+    dS[1] = Vel[1]*dt;
+    numerator = other_state[1] + dS[1]*sinf(other_state[2]) - (own_state[1] + dS[0]*sinf(own_state[2]));
+    denominator = other_state[0] + dS[1]*cosf(other_state[2]) - (own_state[0] + dS[0]*cosf(own_state[2]));
+    theta[0] = atan2f(numerator,denominator);
+
+    dS[0] = (Vel[0] + 1)*dt; // small incremeent in speed
+    numerator = other_state[1] + dS[1]*sinf(other_state[2]) - (own_state[1] + dS[0]*sinf(own_state[2]));
+    denominator = other_state[0] + dS[1]*cosf(other_state[2]) - (own_state[0] + dS[0]*cosf(own_state[2]));
+    theta[1] = atan2f(numerator,denominator);
+    d_theta = theta[1] - theta[0];
+    if(d_theta == 0)
+      return false;
+    d_theta_dv = d_theta; // derivative of theta wrt velocity.
+    // ROS_INFO("d_theta: %f", d_theta_dv);
+    return true;
+
+  }
+
   /*
   pure_pursuit controller for setting baseline
   */
@@ -572,15 +615,6 @@ public:
     if(!pure_pursuit or !goal_received)
     {
       return;
-    }
-    if(destination_reached)
-    {
-      speed = 0;
-    }
-
-    if(not nhttc_speed_only)  // don't modify speed if nhttc is being used for speed calc.
-    {  
-      speed = agents[own_index].prob->params.vel_limit;   // set this as the speed limit found by the timing code.
     }
     Eigen::VectorXf agent_state = agents[own_index].prob->params.x_0; //get agent's current state
     Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector
@@ -600,6 +634,83 @@ public:
     {
       steering = -steer_limit;
     }
+
+    if(destination_reached)
+    {
+      speed = 0;
+    }
+
+    if(not nhttc_speed_only)  // don't modify speed if nhttc is being used for speed calc.
+    {  
+      speed = agents[own_index].prob->params.vel_limit;
+      // we use the nhttc speed unless stuck 
+      ROS_INFO("loop start");
+      float delta_t = 0.025; // because 4 Hz update rate.
+      float theta[16], lambda_ref[16], lambda[16], lambda_err[16]; // Define variables where they are used because we live in 2022 and this is C++ not C. Would have created a {} in C
+      float PD[16], delta_v[16];
+      float gain = 1;
+
+      Eigen::VectorXf state_target[16], state[16];
+      
+      state_target[own_index] = waypoints_gen[own_index][time_index];
+      state[own_index] = agents[own_index].prob->params.x_0.head(2);
+      for(int i = 0;i <= count; i++)
+      {
+        if(i == own_index)
+          continue; // don't measure lambda against yourself, obviously.
+        state_target[i] = waypoints_gen[i][0]; // first point of that agent.
+        state_target[own_index] = waypoints_gen[own_index][0];
+        float theta_start = atan2f(state_target[i][1] - state_target[own_index][1], state_target[i][0] - state_target[own_index][0]);
+        // int other_index;
+        // for(int iter =0; iter < max_index_gen[i]; iter++)
+        // {
+        //   if(fabs(cur_time_stamp - waypoints_gen[i][iter][3]) < 0.2) // roughly the same time stamp
+        //   {
+        //     other_index = iter;
+        //     break;
+        //   }
+        // }
+        // ROS_INFO("other index: %d", other_index);
+        state_target[i] = waypoints_gen[i][ std::min(max_index_gen[i] -1, time_index) ]; // next waypoint for the other agent.
+        state_target[own_index] = waypoints_gen[own_index][time_index];
+
+        float theta_now = atan2f(state_target[i][1] - state_target[own_index][1], state_target[i][0] - state_target[own_index][0]);
+        state[i] = agents[i].prob->params.x_0.head(2);
+
+        theta[i] = atan2f( state[i][1] - state[own_index][1], state[i][0] - state[own_index][0]);
+        lambda_ref[i] = theta_now - theta_start; // this is the expected winding number at next waypoint, also known as the target winding number
+        lambda[i] = theta[i] - theta_start;
+        lambda_err[i] = lambda_ref[i] - lambda[i];
+        if(lambda_err[i] > M_PI)
+          lambda_err[i] -= M_PI;
+        else if(lambda_err[i] < -M_PI)
+          lambda_err[i] += M_PI;
+        float vel[] = {speed, agents[i].prob->params.u_curr[0] };
+        if(dtheta_dv(agents[own_index].prob->params.x_0, agents[i].prob->params.x_0, vel, delta_t, PD[i])) // find dtheta/dv around the speed calc'd by timing logic
+        {
+          delta_v[i] = delta_t* gain * lambda_err[i] / PD[i];
+        }
+        else
+        {
+          delta_v[i] = 0;
+        }
+      }
+      float smallest_delta = delta_v[(own_index+1)%count];
+      for(int i = 0; i<=count; i++)
+      {
+        if(i == own_index)
+          continue;
+        // speed += delta_v[i]; // take average of all for now.
+        if(smallest_delta > delta_v[i])
+        {
+          smallest_delta = delta_v[i];
+        }
+      }
+      ROS_INFO("smallest_delta: %f", smallest_delta);
+      smallest_delta = std::min(std::max(smallest_delta,-0.4f),0.4f);
+      // speed = std::max(speed + smallest_delta, 0.0f);
+    }
+
   } 
 
   /**
@@ -612,35 +723,38 @@ public:
   */
   bool deadlock_detected(float dist_error)
   {
-    // float time_error = dist_error/speed_lim; // convert distance error to temporal error. 
-    // time_error_rate = 0.1f*(1000*(time_error - last_time_error)/(solver_time)) + 0.9f*time_error_rate; // seconds of delay gained per second
-    // last_time_error = time_error;
-    // int contact = 0;
-    // for(int i = 0; i < count; i++)
-    // {
-    //   float separation = (agents[own_index].prob->params.x_0.head(2) - agents[i].prob->params.x_0.head(2)).norm();
-    //   if(i != own_index and separation < 1.5)
-    //   {
-    //     contact++;
-    //   }
-    // }
-    // if(contact>=1 and time_error_rate > time_error_thresh)
-    // {
-    //   return true;
-    // }
     static ros::Time time_since_last_movement;
     static double time_since_stuck;
     int stuck_count = 0;
+    priority_count = 0;
     if(goal_received and not destination_reached)
     {
-      for(int i=0;i<count;i++)
+      for(int i=0;i<=count;i++)
       {
-        float separation = (agents[own_index].prob->params.x_0.head(2) - agents[i].prob->params.x_0.head(2)).norm();
+        Eigen::VectorXf agent_state = agents[own_index].prob->params.x_0; //get agent's current state
+        Eigen::VectorXf other_state = agents[i].prob->params.x_0; //get agent's current state
+        Eigen::Vector2f C = (agents[i].prob->params.x_0.head(2) - agents[own_index].prob->params.x_0.head(2));
+        Eigen::Vector2f head_vec = Eigen::Vector2f(cosf(agent_state[2]),sinf(agent_state[2])); // heading vector
+        Eigen::Vector2f head_vec_other = Eigen::Vector2f(cosf(other_state[2]),sinf(other_state[2])); // heading vector
+        float dist_thresh = 2*(agents[own_index].prob->params.safety_radius + agents[own_index].prob->params.radius);
+        float separation = C.norm();
+        C = C/separation; // unit vector
+        float theta_thresh = atan2f(dist_thresh, separation);
+        float theta = acos(head_vec.dot(C));
+        float theta_other = acos(head_vec_other.dot(-C));
         float speed_own = agents[own_index].prob->params.u_curr[0];
         float speed_oth = agents[i].prob->params.u_curr[0];
-        if(i!=own_index and separation < 1.5 and speed_own < speed_lim*0.2 and speed_oth < 0.2*speed_lim)
+        if(i != own_index and speed_own < speed_lim*0.2 and speed_oth < 0.2*speed_lim and separation < 1.5)
         { //if some other agent is close to me and both of us are moving slow as hell we probably stuck
           stuck_count++;
+          if(theta > theta_thresh)
+          {
+            priority_count = 1; // move bitch.
+          }
+          else if(theta < theta_thresh and theta_other < theta_thresh)
+          {
+            priority_count = int(own_index > i);
+          }
         }
       }
       if(stuck_count == 0)
@@ -650,6 +764,7 @@ public:
       time_since_stuck = (ros::Time::now() - time_since_last_movement).toSec();
       if(time_since_stuck > time_error_thresh)
       {
+
         return true;
       }
     }
@@ -671,7 +786,7 @@ public:
     agents[own_index].prob->params.steer_limit = 0.1*M_PI; // very large swing
     agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -0.1*M_PI) : Eigen::Vector2f(0, -0.1*M_PI);
     agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim, 0.1*M_PI);
-    for(int i=0;i<count;i++)
+    for(int i=0;i<=count;i++)
     {
       if(i != own_index)
       {
@@ -735,7 +850,6 @@ public:
             agents[count+1].SetControls(block_controls);
           }
         }
-
         agents[own_index].SetEgo(agent_state); // This is such a bad way of doing things. No semaphore locks. What if the callback changes the value right after this line? #POSSIBLE BUG
 
         Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
@@ -755,9 +869,9 @@ public:
         Eigen::Vector2f tp_vec = (waypoints[time_index] - agent_state.head(2)); // tp: time point
         multiplier = fabs(tp_vec.dot(head_vec));
         float time_point_dist = multiplier; // removed the multiplier here, because in if the waypoints are intentionally behind the car, this would just skip them. we don't want that.
-        if(time_point_dist < 0.1f)  // there should be an additional condition that prevents time index from being less than waypoint index
+        if(time_point_dist < 0.1)  // there should be an additional condition that prevents time index from being less than waypoint index
         {
-          time_index++;
+          time_index = std::min(max_index - 1, time_index + 1);
           time_viz_publish();
           // re-evaluate the time_point_distance
           tp_vec = (waypoints[time_index] - agent_state.head(2));
@@ -774,7 +888,8 @@ public:
           float virtual_dist = delta_time*speed_lim; // distance from the time-waypoint at which the car should be if it had to travel at the default speed
           float dist_error = time_point_dist - virtual_dist; // error between the expected distance-to-go and the actual distance-to-go
           // I can detect a stall from the dist_error*10. 
-          float delta_speed = std::min(std::max(dist_error*10,-speed_lim),speed_lim*2); // a Proportional controller for changing the speed with some min-max limits
+          float delta_speed = std::min(std::max(dist_error,-speed_lim),speed_lim*2); // a Proportional controller for changing the speed with some min-max limits
+          // ROS_INFO("dist_error: %f", dist_error);
           // setting up the parameters for timing. This also resets the parameters as soon as the deadlock is gone.
           agents[own_index].prob->params.vel_limit = speed_lim + delta_speed; //set the new speed limit 
           agents[own_index].prob->params.steer_limit = steer_limit; 
@@ -782,6 +897,7 @@ public:
           agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim + delta_speed,steer_limit);
           
           deadlock_flag = false;
+          agents[own_index].prob->params.safety_radius = safety_radius;
           if(deadlock_detected(dist_error))
           {
             ROS_INFO("DEADLOCK DETECTED");

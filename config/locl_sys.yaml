@@ -1,0 +1,18 @@
+#locl
+sim: true
+carrot_goal_ratio: 1.0
+max_ttc: 1.5
+solver_time: 20
+obey_time: false
+allow_reverse: false
+safety_radius: 0.1
+adaptive_lookahead: false
+push_configuration: true
+push_limit_radius: 1.0
+delivery_tolerance: 0.1
+speed_lim: 0.4
+deadlock_solve: false
+add_noise: 0  # only works in simulation
+time_error_thresh: 0.3
+nhttc_standalone: true # set to false to use full system
+pure_pursuit: false # set to false to use full system
