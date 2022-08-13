@@ -200,7 +200,25 @@ public:
         reconfig_ind = i;
       }
     }
-    reconfigure_index = reconfig_ind; // local to global transfer. I use a local variable to avoid confusion/entanglement.
+    reconfigure_index = reconfig_ind;
+    if(nhttc_standalone)
+    {
+      reconfigure_index = 0; //reconfig_ind; // local to global transfer. I use a local variable to avoid confusion/entanglement.
+      waypoints.clear();
+      Eigen::Vector2f wp,dummy;
+      dummy = waypoints[max_index - 1];
+      wp = mode_switch_pos;
+      waypoints.push_back(wp);
+      waypoints.push_back(dummy);
+      current_wp_index = 0;
+      goal = waypoints[0];
+      goal_received = true;
+      agents[own_index].UpdateGoal(goal); // set the goal 
+      max_index = 2;
+      cur_time_stamp = time_stamps[1];
+      time_index = 0; //reset
+      begin = ros::Time::now();// + ros::Duration(0.02); // add 0.02 seconds corresponding to the 50 hz update rate.
+    }
   }
   /**
   function to reset parameters to normal mode (non-pushing). Do not use unless both pushing and non-pushing modes are needed.
@@ -787,11 +805,8 @@ public:
     agents[own_index].prob->params.steer_limit = 0.1*M_PI; // very large swing
     agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -0.1*M_PI) : Eigen::Vector2f(0, -0.1*M_PI);
     agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim, 0.1*M_PI);
-<<<<<<< HEAD
-    for(int i=0;i<=count;i++)
-=======
+
     for(int i = 0; i <= count; i++)
->>>>>>> ebdbcfa48cd6a77b6303883e7fe3c26579e02d12
     {
       if(i != own_index)
       {
@@ -822,39 +837,44 @@ public:
       //if we have a goal
       if(goal_received)
       { 
-        // Find distance to current nhttc waypoint
-        if(nhttc_standalone)
-        {
-            current_wp_index = max_index-1;
-            agents[own_index].goal = waypoints[current_wp_index];
-            time_index = max_index-1;
-        }
         if(not reconfigure_index_found)
         {
           get_reconfigure_index();
           ROS_INFO("reconfigure_index found at %d",reconfigure_index);
           reconfigure_index_found = true; // Do this calc once.
+          update_param_normal();
         }
-        else
+        if(nhttc_standalone and push_configuration and current_wp_index == 1)
         {
-          if(current_wp_index == reconfigure_index+1 and push_configuration)
-          {
-            push_configuration = false;
-            // update_param_normal();
-            // add our block as a static agent to avoid. This is not ideal, should be updated to get the block's actual location.
-            agent_setup(count+1);
-            Eigen::VectorXf block_x_o = Eigen::VectorXf::Zero(3);
-            Eigen::VectorXf block_controls = Eigen::VectorXf::Zero(2);
-            block_x_o[0] = waypoints[reconfigure_index][0];
-            block_x_o[1] = waypoints[reconfigure_index][1];
-            block_x_o[2] = 0;
-            agents[count+1].prob->params.safety_radius = 0;
-            agents[count+1].prob->params.radius = 0.1;
-            agents[count+1].prob->params.max_ttc = max_ttc;
-            agents[count+1].SetEgo(block_x_o);
-            agents[count+1].SetControls(block_controls);
-          }
+          agents[own_index].prob->params.safety_radius = safety_radius; // reduce the safety radius
+          steer_limit = atanf(wheelbase/push_limit_radius);
+          agents[own_index].prob->params.steer_limit = steer_limit;
+          agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
+          agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim, steer_limit);
+          ROS_INFO("parameters updated!");
         }
+        // else
+        // {
+        //   if(current_wp_index == reconfigure_index+1 and push_configuration)
+        //   {
+        //     push_configuration = false;
+        //     // update_param_normal();
+        //     // add our block as a static agent to avoid. This is not ideal, should be updated to get the block's actual location.
+        //     agent_setup(count+1);
+        //     Eigen::VectorXf block_x_o = Eigen::VectorXf::Zero(3);
+        //     Eigen::VectorXf block_controls = Eigen::VectorXf::Zero(2);
+        //     block_x_o[0] = waypoints[reconfigure_index][0];
+        //     block_x_o[1] = waypoints[reconfigure_index][1];
+        //     block_x_o[2] = 0;
+        //     agents[count+1].prob->params.safety_radius = 0;
+        //     agents[count+1].prob->params.radius = 0.1;
+        //     agents[count+1].prob->params.max_ttc = max_ttc;
+        //     agents[count+1].SetEgo(block_x_o);
+        //     agents[count+1].SetControls(block_controls);
+        //   }
+        // }
+                // Find distance to current nhttc waypoint
+
         agents[own_index].SetEgo(agent_state); // This is such a bad way of doing things. No semaphore locks. What if the callback changes the value right after this line? #POSSIBLE BUG
 
         Eigen::Vector2f wp_vec = (agents[own_index].goal - agent_state.head(2)); // vector joining agent to waypoint
@@ -869,6 +889,10 @@ public:
         }
         float multiplier = fabs(wp_vec.dot(head_vec));
         float dist = multiplier; //distance from goal wp.
+        if(nhttc_standalone)
+        {
+          dist = wp_vec.norm();
+        }
         // now search for the nearest waypoint thats still ahead of me.
         // note, this depends on previously calculated heading vector. This evaluation works similarly to the above calc.
         Eigen::Vector2f tp_vec = (waypoints[time_index] - agent_state.head(2)); // tp: time point
@@ -930,7 +954,7 @@ public:
         {
           if(current_wp_index < max_index-1)
           {
-            if(current_wp_index == reconfigure_index and dist*wp_vec.dot(head_vec) > delivery_tolerance and push_configuration) // last condition tests whether the wp has been overshot or not
+            if(0 and current_wp_index == reconfigure_index and dist*wp_vec.dot(head_vec) > delivery_tolerance and push_configuration) // last condition tests whether the wp has been overshot or not
             {  
               ROS_INFO("zeroing in on delivery location! %f", dist);
               agents[own_index].prob->params.safety_radius = 0;
@@ -946,7 +970,7 @@ public:
           }
           else
           {
-            agents[own_index].prob->params.safety_radius = 0;
+            // agents[own_index].prob->params.safety_radius = 0;
             controls = agents[own_index].UpdateControls(); // in case it is the final waypoint, keep going until dist-to-go is less than wheelbase
 
             if(current_wp_index >= max_index-1 and dist < agents[own_index].prob->params.radius)
@@ -961,7 +985,7 @@ public:
           }
         }
       }
-      controls[0] = push_configuration ? std::max(0.0f, controls[0]) : controls[0];
+      // controls[0] = push_configuration ? std::max(0.0f, controls[0]) : controls[0];
       float speed = controls[0]; //speed in m/s
       float steering_angle = controls[1]; //steering angle in radians. +ve is left. -ve is right
       pure_pursuit_controller(speed,steering_angle);  // call this function to make use of pure pursuit code

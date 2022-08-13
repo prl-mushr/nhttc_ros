@@ -28,7 +28,7 @@
             <!-- Check CMakeLists.txt of mushr_description for appropriate values -->
             <arg name="racecar_color" value="" />
         </include>
-        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller">
+        <node pkg="nhttc_ros" type="nhttc_ros_node" name="controller" output="screen">
             <param name="car_name" value="$(arg car1_name)"/>
         </node>
     </group>
