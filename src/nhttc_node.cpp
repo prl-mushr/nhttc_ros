@@ -226,7 +226,7 @@ public:
   void update_param_normal()
   {
     agents[own_index].prob->params.safety_radius = safety_radius; // reduce the safety radius
-    steer_limit = 0.1*M_PI;
+    steer_limit = 0.4; //0.1*M_PI;
     agents[own_index].prob->params.steer_limit = steer_limit;
     agents[own_index].prob->params.u_lb = allow_reverse ? Eigen::Vector2f(-speed_lim, -steer_limit) : Eigen::Vector2f(0, -steer_limit);
     agents[own_index].prob->params.u_ub = Eigen::Vector2f(speed_lim, steer_limit);
@@ -535,7 +535,7 @@ public:
    */
   void setup()
   {
-    steer_limit = 0.1*M_PI; // max steering angle ~18 degrees. :(. I wanted to drift with the MuSHR car. 
+    steer_limit = 0.4; //0.1*M_PI; // max steering angle ~18 degrees. :(. I wanted to drift with the MuSHR car. 
     float steer_limit_default = steer_limit;
     wheelbase = agents[own_index].prob->params.wheelbase;
     if(push_configuration) // basically check if pushing will happen.
